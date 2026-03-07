@@ -1,7 +1,16 @@
 import environ
 import os
+<<<<<<< HEAD
 from pathlib import Path
 import dj_database_url
+=======
+import dj_database_url
+
+
+load_dotenv()
+
+
+>>>>>>> 036b9c06f3f3f46271c00e6f79861e6e685516ce
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -68,9 +77,13 @@ sqlite_path = str(Path(BASE_DIR) / 'db.sqlite3')
 
 DATABASES = {
     'default': dj_database_url.config(
+<<<<<<< HEAD
         default=f'sqlite:///{sqlite_path}',
         conn_max_age=600,
         conn_health_checks=True,
+=======
+        default=os.environ.get('DATABASE_URL')
+>>>>>>> 036b9c06f3f3f46271c00e6f79861e6e685516ce
     )
 }
 
@@ -122,5 +135,14 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 
+<<<<<<< HEAD
 # WhiteNoise staticfiles storage (production friendly)
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+=======
+if 'PYTHONANYWHERE_DOMAIN' in os.environ:
+    DEBUG = False
+    ALLOWED_HOSTS = ['9pd.pythonanywhere.com']
+else:
+    DEBUG = True
+    ALLOWED_HOSTS = []
+>>>>>>> 036b9c06f3f3f46271c00e6f79861e6e685516ce
