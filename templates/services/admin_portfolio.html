@@ -1,0 +1,97 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}نظرة عامة - لوحة التحكم{% endblock %}
+
+<!-- تفعيل زر "لوحة التحكم" في القائمة الجانبية -->
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === كروت الإحصائيات === */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    .stat-card {
+        background-color: var(--card-bg);
+        padding: 1.5rem;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .stat-info h3 { font-size: 2rem; color: var(--primary); margin-bottom: 0.25rem; }
+    .stat-info p { color: var(--text-muted); font-size: 0.9rem; }
+    .stat-icon { font-size: 2.5rem; color: var(--border); }
+
+    /* === بطاقة البيانات === */
+    .data-card {
+        background-color: var(--card-bg);
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+    .card-header {
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .card-header h3 { font-size: 1.1rem; }
+</style>
+{% endblock %}
+
+{% block page_title %}نظرة عامة{% endblock %}
+
+{% block content %}
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ users_count }}</h3>
+            <p>إجمالي المستخدمين</p>
+        </div>
+        <i class="fas fa-users stat-icon"></i>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ models_count }}</h3>
+            <p>المودلز</p>
+        </div>
+        <i class="fas fa-user-tie stat-icon"></i>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ creators_count }}</h3>
+            <p>صناع المحتوى</p>
+        </div>
+        <i class="fas fa-video stat-icon"></i>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ unread_messages }}</h3>
+            <p>طلبات جديدة</p>
+        </div>
+        <i class="fas fa-bell stat-icon"></i>
+    </div>
+</div>
+
+<!-- Quick Links Card -->
+<div class="data-card">
+    <div class="card-header">
+        <h3>روابط سريعة</h3>
+    </div>
+    <div style="padding: 1.5rem;">
+        <p>يمكنك من هنا إدارة المحتوى والمستخدمين:</p>
+        <div style="margin-top: 1rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <a href="{% url 'services:admin_users' %}" class="btn-sm btn-warning">إضافة مستخدم جديد</a>
+            <a href="{% url 'services:admin_messages' %}" class="btn-sm btn-info">عرض الطلبات</a>
+            <a href="{% url 'services:admin_portfolio' %}" class="btn-sm btn-warning">إضافة عمل جديد</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

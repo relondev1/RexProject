@@ -1,0 +1,520 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة تحكم المودل - ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === إعدادات عامة للصفحات الثلاث === */
+    :root {
+        --mdl-primary: #FFBD59;
+        --mdl-primary-dark: #E6A84A;
+        --mdl-primary-light: rgba(255, 189, 89, 0.15);
+        --mdl-danger: #e74c3c;
+    }
+
+    .mdl-container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 2rem;
+        padding-top: 6rem;
+        position: relative;
+    }
+
+    /* === الهيدر === */
+    .mdl-header {
+        text-align: center;
+        margin-bottom: 3rem;
+        position: relative;
+        animation: fadeInUp 0.8s ease;
+    }
+
+    .mdl-header h1 {
+        font-size: 2.8rem;
+        color: var(--mdl-primary);
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        text-shadow: 0 0 20px rgba(255, 189, 89, 0.3);
+    }
+
+    .mdl-header h1 i {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, var(--mdl-primary), #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    .mdl-header p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        position: relative;
+        display: inline-block;
+        padding: 0.5rem 2rem;
+        background: rgba(255, 189, 89, 0.05);
+        border-radius: 50px;
+        border: 1px solid rgba(255, 189, 89, 0.2);
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* === نظام التابس (القوائم) === */
+    .mdl-tabs {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 3rem;
+        flex-wrap: wrap;
+        justify-content: center;
+        animation: fadeInUp 0.8s ease 0.1s both;
+    }
+
+    .mdl-tab-btn {
+        padding: 1rem 2.5rem;
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 2px solid var(--border);
+        color: var(--text-muted);
+        border-radius: 50px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 1.1rem;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mdl-tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+        z-index: 0;
+    }
+
+    .mdl-tab-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .mdl-tab-btn i { 
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .mdl-tab-btn span {
+        position: relative;
+        z-index: 1;
+    }
+
+    .mdl-tab-btn.active {
+        background: linear-gradient(135deg, var(--mdl-primary), var(--mdl-primary-dark));
+        color: #000;
+        border-color: transparent;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4);
+    }
+
+    .mdl-tab-btn:hover:not(.active) {
+        border-color: var(--mdl-primary);
+        color: var(--mdl-primary);
+        transform: translateY(-2px);
+    }
+
+    /* === كروت الإحصائيات === */
+    .mdl-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.5rem;
+        margin-bottom: 3rem;
+        animation: fadeInUp 0.8s ease 0.2s both;
+    }
+
+    .mdl-stat-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 1px solid rgba(255,189,89,0.1);
+        border-radius: 25px;
+        padding: 2rem;
+        text-align: center;
+        transition: all 0.4s;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .mdl-stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--mdl-primary), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+    }
+
+    .mdl-stat-card:hover::before { 
+        transform: translateX(100%); 
+    }
+    
+    .mdl-stat-card:hover { 
+        transform: translateY(-5px); 
+        border-color: var(--mdl-primary); 
+        box-shadow: 0 0 30px rgba(255,189,89,0.3);
+    }
+
+    .mdl-stat-icon {
+        width: 70px; 
+        height: 70px;
+        background: var(--mdl-primary-light);
+        border-radius: 50%;
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        margin: 0 auto 1.2rem;
+        border: 2px solid var(--mdl-primary);
+        transition: transform 0.3s;
+    }
+
+    .mdl-stat-card:hover .mdl-stat-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    .mdl-stat-icon i { 
+        font-size: 2rem; 
+        color: var(--mdl-primary); 
+    }
+    .mdl-stat-value { 
+        font-size: 2.5rem; 
+        font-weight: 800; 
+        color: var(--mdl-primary); 
+        margin-bottom: 0.3rem;
+        text-shadow: 0 0 20px rgba(255,189,89,0.3);
+    }
+    .mdl-stat-label { 
+        color: var(--text-muted); 
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    /* === بطاقات الاختصارات === */
+    .mdl-quick-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.8rem;
+        animation: fadeInUp 0.8s ease 0.3s both;
+    }
+
+    .mdl-quick-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 1px solid rgba(255,189,89,0.1);
+        border-radius: 25px;
+        padding: 2rem;
+        text-align: center;
+        text-decoration: none;
+        color: var(--text);
+        transition: all 0.4s;
+        display: block;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .mdl-quick-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--mdl-primary), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+    }
+
+    .mdl-quick-card:hover::before {
+        transform: translateX(100%);
+    }
+
+    .mdl-quick-card:hover { 
+        border-color: var(--mdl-primary); 
+        transform: translateY(-8px); 
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    
+    .mdl-quick-card h3 { 
+        color: var(--mdl-primary); 
+        margin-bottom: 0.8rem; 
+        font-size: 1.5rem; 
+        font-weight: 700;
+    }
+    
+    .mdl-quick-card p { 
+        color: var(--text-muted); 
+        font-size: 0.95rem; 
+        margin-bottom: 1.2rem;
+        line-height: 1.6;
+    }
+    
+    .mdl-quick-icon { 
+        font-size: 3.5rem; 
+        color: var(--mdl-primary); 
+        margin-bottom: 1.2rem;
+        transition: transform 0.3s;
+    }
+
+    .mdl-quick-card:hover .mdl-quick-icon {
+        transform: scale(1.2) rotate(360deg);
+    }
+
+    /* === بادج للبطاقات === */
+    .mdl-quick-badge {
+        display: inline-block;
+        background: var(--mdl-primary-light);
+        color: var(--mdl-primary);
+        padding: 0.3rem 1.2rem;
+        border-radius: 30px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        border: 1px solid rgba(255,189,89,0.3);
+        transition: all 0.3s;
+    }
+
+    .mdl-quick-card:hover .mdl-quick-badge {
+        background: var(--mdl-primary);
+        color: #000;
+    }
+
+    /* === زر زيارة الملف الشخصي === */
+    .mdl-profile-visit {
+        text-align: center;
+        margin: 2.5rem 0 1rem;
+        animation: fadeInUp 0.8s ease 0.4s both;
+    }
+
+    .mdl-profile-visit a {
+        display: inline-flex;
+        align-items: center;
+        gap: 1rem;
+        background: linear-gradient(135deg, var(--mdl-primary), var(--mdl-primary-dark));
+        color: #000;
+        text-decoration: none;
+        padding: 1.2rem 3rem;
+        border-radius: 60px;
+        font-weight: 700;
+        font-size: 1.2rem;
+        transition: all 0.4s;
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mdl-profile-visit a::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .mdl-profile-visit a:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .mdl-profile-visit a:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 20px 35px rgba(255, 189, 89, 0.5);
+    }
+
+    .mdl-profile-visit a i {
+        font-size: 1.5rem;
+        transition: transform 0.3s;
+    }
+
+    .mdl-profile-visit a:hover i {
+        transform: translateX(-5px);
+    }
+
+    .mdl-profile-visit p {
+        color: var(--text-muted);
+        margin-top: 1rem;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .mdl-container { 
+            padding: 1rem; 
+            padding-top: 5rem; 
+        }
+        
+        .mdl-header h1 { 
+            font-size: 2rem; 
+        }
+        
+        .mdl-tabs { 
+            gap: 0.8rem; 
+        }
+        
+        .mdl-tab-btn { 
+            padding: 0.8rem 1.5rem; 
+            font-size: 0.9rem; 
+        }
+        
+        .mdl-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .mdl-stat-card {
+            padding: 1.5rem;
+        }
+        
+        .mdl-stat-value {
+            font-size: 2rem;
+        }
+        
+        .mdl-profile-visit a {
+            padding: 1rem 2rem;
+            font-size: 1rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .mdl-stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .mdl-quick-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* === سكرول مخصص === */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--mdl-primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--mdl-primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mdl-container">
+    <!-- Header محسن -->
+    <div class="mdl-header">
+        <h1>
+            <i class="fas fa-crown"></i> 
+            لوحة تحكم المودل
+        </h1>
+        <p>
+            <i class="fas fa-user-circle"></i> 
+            مرحباً بك في لوحة التحكم الخاصة بك
+        </p>
+    </div>
+
+    <div class="mdl-tabs">
+        <!-- الروابط تبقى نفسها للمستخدم وللأدمن (النظام يتعامل معها تلقائياً) -->
+        <a href="{% url 'services:model_dashboard' %}" class="mdl-tab-btn active">الرئيسية</a>
+        <a href="{% url 'services:model_profile_edit' %}" class="mdl-tab-btn">المعلومات الشخصية</a>
+        <a href="{% url 'services:model_portfolio' %}" class="mdl-tab-btn">معرض الأعمال</a>
+        
+        <!-- زر الخروج يظهر فقط للأدمن -->
+        {% if is_admin_view %}
+        <a href="{% url 'services:admin_close_panel' %}" class="mdl-tab-btn" style="background: #d35400; color: #fff; border: none;">
+            <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Stats Section محسنة -->
+    <div class="mdl-stats-grid">
+        <div class="mdl-stat-card">
+            <div class="mdl-stat-icon"><i class="fas fa-eye"></i></div>
+            <div class="mdl-stat-value">{{ profile_views|default:"0" }}</div>
+            <div class="mdl-stat-label">مشاهدات الملف</div>
+        </div>
+        <div class="mdl-stat-card">
+            <div class="mdl-stat-icon"><i class="fas fa-images"></i></div>
+            <div class="mdl-stat-value">{{ portfolio_count|default:"0" }}</div>
+            <div class="mdl-stat-label">عدد الأعمال</div>
+        </div>
+        <div class="mdl-stat-card">
+            <div class="mdl-stat-icon"><i class="fas fa-comments"></i></div>
+            <div class="mdl-stat-value">{{ chats_count|default:"0" }}</div>
+            <div class="mdl-stat-label">المحادثات النشطة</div>
+        </div>
+    </div>
+
+    <!-- Quick Links محسنة -->
+    <div class="mdl-quick-grid">
+        <a href="{% url 'services:model_profile_edit' %}" class="mdl-quick-card">
+            <div class="mdl-quick-icon"><i class="fas fa-user-circle"></i></div>
+            <h3>تعديل الملف الشخصي</h3>
+            <p>تحديث بياناتك الشخصية، الصور، والفيديو التعريفي</p>
+            <span class="mdl-quick-badge">
+                <i class="fas fa-arrow-left"></i> تعديل الآن
+            </span>
+        </a>
+        <a href="{% url 'services:model_portfolio' %}" class="mdl-quick-card">
+            <div class="mdl-quick-icon"><i class="fas fa-photo-video"></i></div>
+            <h3>معرض الأعمال</h3>
+            <p>إضافة وتنظيم صور وفيديوهات أعمالك</p>
+            <span class="mdl-quick-badge">
+                <i class="fas fa-arrow-left"></i> إدارة المعرض
+            </span>
+        </a>
+        <a href="{% url 'services:my_chats' %}" class="mdl-quick-card">
+            <div class="mdl-quick-icon"><i class="fas fa-comment-dots"></i></div>
+            <h3>المحادثات</h3>
+            <p>تواصل مع العملاء والرد على استفساراتهم</p>
+            <span class="mdl-quick-badge">
+                <i class="fas fa-arrow-left"></i> عرض المحادثات
+            </span>
+        </a>
+    </div>
+
+    <!-- زر زيارة الملف الشخصي -->
+    <div class="mdl-profile-visit">
+        <a href="{% url 'services:provider_profile' request.user.id %}" target="_blank">
+            <i class="fas fa-eye"></i>
+            زيارة الملف الشخصي
+            <i class="fas fa-external-link-alt"></i>
+        </a>
+        <p>شاهد كيف يظهر ملفك للعملاء</p>
+    </div>
+</div>
+{% endblock %}

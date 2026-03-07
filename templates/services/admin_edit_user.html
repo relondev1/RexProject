@@ -1,0 +1,680 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}تعديل مستخدم - ريكس{% endblock %}
+
+<!-- تفعيل زر "المستخدمين" في القائمة الجانبية -->
+{% block nav_users %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === أنميشنات === */
+    @keyframes adminFadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes adminFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @keyframes adminPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes adminGlow {
+        0%, 100% { box-shadow: 0 0 5px rgba(255, 189, 89, 0.3); }
+        50% { box-shadow: 0 0 20px rgba(255, 189, 89, 0.6); }
+    }
+
+    @keyframes adminShimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+    }
+
+    /* === كارد الفورم الرئيسي === */
+    .form-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        border-radius: 30px;
+        padding: 2.5rem;
+        max-width: 800px;
+        margin: 0 auto;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        position: relative;
+        overflow: hidden;
+        animation: adminFadeInUp 0.8s ease;
+    }
+
+    .form-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: adminPulse 2s infinite;
+    }
+
+    /* === الهيدر === */
+    .form-header {
+        text-align: center;
+        margin-bottom: 2rem;
+        position: relative;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid rgba(255,189,89,0.1);
+    }
+
+    .form-header h2 {
+        color: var(--primary);
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        font-weight: 800;
+    }
+
+    .form-header h2 i {
+        font-size: 2.2rem;
+        filter: drop-shadow(0 0 10px rgba(255,189,89,0.5));
+        animation: adminFloat 3s ease-in-out infinite;
+    }
+
+    .form-header p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+
+    .form-header p i {
+        color: var(--primary);
+    }
+
+    /* === صورة المستخدم (محسنة) === */
+    .user-profile-header {
+        display: flex;
+        align-items: center;
+        gap: 2rem;
+        margin-bottom: 2.5rem;
+        padding: 1.8rem;
+        background: linear-gradient(145deg, rgba(255,189,89,0.05), rgba(0,0,0,0.2));
+        border-radius: 25px;
+        border: 1px solid rgba(255,189,89,0.15);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .user-profile-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,189,89,0.05) 0%, transparent 70%);
+        animation: adminFloat 10s linear infinite;
+    }
+
+    .user-avatar-large {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        font-weight: 800;
+        color: #000;
+        box-shadow: 0 0 0 4px rgba(255,189,89,0.3), 0 15px 30px rgba(0,0,0,0.4);
+        position: relative;
+        z-index: 2;
+        transition: all 0.3s;
+    }
+
+    .user-avatar-large:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 0 4px rgba(255,189,89,0.5), 0 20px 40px rgba(0,0,0,0.5);
+    }
+
+    .user-info-detailed {
+        flex: 1;
+        position: relative;
+        z-index: 2;
+    }
+
+    .user-info-detailed h3 {
+        color: var(--primary);
+        font-size: 1.8rem;
+        margin-bottom: 0.3rem;
+        font-weight: 700;
+    }
+
+    .user-info-detailed .user-meta {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 0.5rem;
+    }
+
+    .user-info-detailed .user-email {
+        color: var(--text-light);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        background: rgba(255,255,255,0.05);
+        padding: 0.3rem 1rem;
+        border-radius: 30px;
+    }
+
+    .user-info-detailed .user-email i {
+        color: var(--primary);
+    }
+
+    .role-display-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.4rem 1.2rem;
+        background: rgba(255,189,89,0.15);
+        border: 1px solid rgba(255,189,89,0.3);
+        border-radius: 40px;
+        color: var(--primary);
+        font-size: 0.9rem;
+        font-weight: 700;
+    }
+
+    .role-display-badge i {
+        font-size: 1rem;
+    }
+
+    .user-status-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.8rem;
+        background: rgba(46, 204, 113, 0.15);
+        border: 1px solid rgba(46, 204, 113, 0.3);
+        border-radius: 30px;
+        color: var(--success);
+        font-size: 0.8rem;
+    }
+
+    /* === تنسيق حقول الفورم === */
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .form-group { 
+        margin-bottom: 1.2rem; 
+        animation: adminFadeInUp 0.5s ease backwards;
+    }
+
+    .form-group:nth-child(1) { animation-delay: 0.1s; }
+    .form-group:nth-child(2) { animation-delay: 0.15s; }
+    .form-group:nth-child(3) { animation-delay: 0.2s; }
+    .form-group:nth-child(4) { animation-delay: 0.25s; }
+    .form-group:nth-child(5) { animation-delay: 0.3s; }
+    .form-group:nth-child(6) { animation-delay: 0.35s; }
+
+    .form-group label { 
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem; 
+        color: var(--text-muted); 
+        font-weight: 600; 
+        font-size: 0.95rem;
+    }
+
+    .form-group label i {
+        color: var(--primary);
+        font-size: 1rem;
+        filter: drop-shadow(0 0 5px rgba(255,189,89,0.3));
+    }
+
+    .input-wrapper {
+        position: relative;
+    }
+
+    .input-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1rem;
+        transition: color 0.3s;
+        z-index: 1;
+    }
+
+    .form-group input, 
+    .form-group select {
+        width: 100%; 
+        padding: 0.9rem 2.5rem 0.9rem 1rem;
+        background: rgba(0,0,0,0.3);
+        border: 2px solid var(--border);
+        color: var(--foreground);
+        border-radius: 15px;
+        font-family: 'Cairo';
+        font-size: 0.95rem;
+        transition: all 0.3s;
+    }
+
+    .form-group input:focus, 
+    .form-group select:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(255,189,89,0.1);
+        background: rgba(0,0,0,0.5);
+    }
+
+    .form-group input:focus + .input-icon {
+        color: var(--primary);
+    }
+
+    .form-group input[type="password"] {
+        padding-left: 2.5rem;
+    }
+
+    /* === قسم كلمة المرور المحسن === */
+    .password-section {
+        grid-column: span 2;
+        background: rgba(0,0,0,0.2);
+        border-radius: 20px;
+        padding: 1.5rem;
+        margin-top: 0.5rem;
+        border: 1px solid rgba(255,189,89,0.1);
+    }
+
+    @media (max-width: 768px) {
+        .password-section {
+            grid-column: span 1;
+        }
+    }
+
+    .password-section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--primary);
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+
+    .password-section-title i {
+        font-size: 1.2rem;
+    }
+
+    .password-hint {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: rgba(255,189,89,0.05);
+        border-radius: 10px;
+        border-right: 3px solid var(--primary);
+    }
+
+    .password-hint i {
+        color: var(--primary);
+        font-size: 0.9rem;
+    }
+
+    /* === أزرار الفورم === */
+    .form-actions {
+        display: flex; 
+        gap: 1rem; 
+        margin-top: 2.5rem;
+        border-top: 2px solid rgba(255,189,89,0.1);
+        padding-top: 2rem;
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000;
+        padding: 1rem 2.5rem; 
+        border: none; 
+        border-radius: 50px;
+        cursor: pointer; 
+        font-weight: 800; 
+        font-family: 'Cairo'; 
+        font-size: 1.1rem;
+        transition: all 0.4s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+        flex: 1;
+        justify-content: center;
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-primary:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.4);
+    }
+
+    .btn-secondary {
+        background: rgba(255,255,255,0.02);
+        color: var(--text-muted);
+        padding: 1rem 2.5rem; 
+        border: 2px solid var(--border);
+        border-radius: 50px;
+        text-decoration: none; 
+        font-family: 'Cairo'; 
+        font-size: 1.1rem;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        flex: 1;
+        justify-content: center;
+    }
+
+    .btn-secondary:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(255,189,89,0.05);
+        transform: translateY(-2px);
+    }
+
+    /* === حالة الحماية للمستخدمين المحميين === */
+    .protected-notice {
+        margin: 1.5rem 0;
+        padding: 1.2rem;
+        background: rgba(255,189,89,0.05);
+        border: 1px solid rgba(255,189,89,0.2);
+        border-radius: 15px;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        color: var(--text-muted);
+        border-right: 4px solid var(--primary);
+    }
+
+    .protected-notice i {
+        color: var(--primary);
+        font-size: 1.5rem;
+    }
+
+    .protected-notice div {
+        flex: 1;
+    }
+
+    .protected-notice span {
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .protected-notice small {
+        display: block;
+        color: var(--text-muted);
+        font-size: 0.85rem;
+        margin-top: 0.2rem;
+    }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+        .form-card {
+            padding: 1.5rem;
+        }
+
+        .form-header h2 {
+            font-size: 1.6rem;
+        }
+
+        .user-profile-header {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+
+        .user-info-detailed .user-meta {
+            justify-content: center;
+        }
+
+        .form-actions {
+            flex-direction: column;
+        }
+
+        .btn-primary, .btn-secondary {
+            width: 100%;
+        }
+
+        .password-section {
+            padding: 1rem;
+        }
+    }
+
+    /* === سكرول مخصص === */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}
+<div style="display: flex; align-items: center; gap: 0.5rem;">
+    <i class="fas fa-user-edit" style="color: var(--primary); filter: drop-shadow(0 0 10px rgba(255,189,89,0.5));"></i>
+    <span>تعديل بيانات المستخدم</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="form-card">
+    <div class="form-header">
+        <h2>
+            <i class="fas fa-user-cog"></i>
+            تعديل الملف الشخصي
+        </h2>
+        <p>
+            <i class="fas fa-pencil-alt"></i>
+            قم بتحديث بيانات المستخدم والصلاحيات
+        </p>
+    </div>
+
+    <!-- صورة المستخدم ومعلومات سريعة محسنة -->
+    <div class="user-profile-header">
+        <div class="user-avatar-large">
+            {{ username|first|upper }}
+        </div>
+        <div class="user-info-detailed">
+            <h3>{{ username }}</h3>
+            <div class="user-meta">
+                <span class="user-email">
+                    <i class="fas fa-envelope"></i>
+                    {{ email }}
+                </span>
+                <span class="role-display-badge">
+                    <i class="fas fa-tag"></i>
+                    {% if role == 'admin' %}مدير النظام
+                    {% elif role == 'model' %}مودل
+                    {% elif role == 'creator' %}صانع محتوى
+                    {% elif role == 'videographer' %}منتج فيديو
+                    {% elif role == 'voice' %}فنان صوتي
+                    {% elif role == 'writer' %}كاتب محتوى
+                    {% elif role == 'provider' %}مزود خدمة
+                    {% elif role == 'management' %}إدارة
+                    {% else %}عميل{% endif %}
+                </span>
+                {% if user.is_active %}
+                <span class="user-status-indicator">
+                    <i class="fas fa-circle"></i> نشط
+                </span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        
+        <div class="form-grid">
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-user"></i>
+                    اسم المستخدم
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" name="username" value="{{ username }}" required placeholder="أدخل اسم المستخدم">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-envelope"></i>
+                    البريد الإلكتروني
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" name="email" value="{{ email }}" required placeholder="user@example.com">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-user-tag"></i>
+                    الاسم الأول
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-user-tag input-icon"></i>
+                    <input type="text" name="first_name" value="{{ first_name }}" placeholder="الاسم الأول">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-phone"></i>
+                    رقم الجوال
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-phone input-icon"></i>
+                    <input type="text" name="phone" value="{{ phone }}" placeholder="05xxxxxxxx">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <i class="fas fa-tag"></i>
+                    الرتبة (الصلاحية)
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-tag input-icon"></i>
+                    <select name="role">
+                        <option value="client" {% if role == 'client' %}selected{% endif %}>👤 عميل</option>
+                        <option value="provider" {% if role == 'provider' %}selected{% endif %}>🤝 مزود خدمة</option>
+                        <option value="management" {% if role == 'management' %}selected{% endif %}>📋 إدارة</option>
+                        <option value="admin" {% if role == 'admin' %}selected{% endif %}>⚡ مدير النظام</option>
+                        <option value="model" {% if role == 'model' %}selected{% endif %}>📸 مودل</option>
+                        <option value="creator" {% if role == 'creator' %}selected{% endif %}>🎬 صانع محتوى</option>
+                        <option value="videographer" {% if role == 'videographer' %}selected{% endif %}>🎥 منتج فيديو</option>
+                        <option value="voice" {% if role == 'voice' %}selected{% endif %}>🎤 فنان صوتي</option>
+                        <option value="writer" {% if role == 'writer' %}selected{% endif %}>✍️ كاتب محتوى</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم كلمة المرور المحسن -->
+        <div class="password-section">
+            <div class="password-section-title">
+                <i class="fas fa-lock"></i>
+                <span>تغيير كلمة المرور</span>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>
+                    <i class="fas fa-key"></i>
+                    كلمة مرور جديدة
+                </label>
+                <div class="input-wrapper">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" name="password" placeholder="أدخل كلمة المرور الجديدة">
+                </div>
+            </div>
+            <div class="password-hint">
+                <i class="fas fa-info-circle"></i>
+                <span>اترك هذا الحقل فارغاً إذا كنت لا تريد تغيير كلمة المرور الحالية</span>
+            </div>
+        </div>
+
+        <!-- تنبيه للمستخدمين المحميين -->
+        {% if username|lower == 'relon' or username|lower == 'rex' %}
+        <div class="protected-notice">
+            <i class="fas fa-shield-alt"></i>
+            <div>
+                <span>🔒 هذا المستخدم محمي</span>
+                <small>لا يمكن تغيير صلاحياته أو تعطيله من لوحة التحكم للحفاظ على أمان النظام</small>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="form-actions">
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i>
+                حفظ التعديلات
+            </button>
+            <a href="{% url 'services:admin_users' %}" class="btn-secondary">
+                <i class="fas fa-times"></i>
+                إلغاء
+            </a>
+        </div>
+    </form>
+</div>
+{% endblock %}

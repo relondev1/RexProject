@@ -1,0 +1,521 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة تحكم الفنان الصوتي - ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === أنميشنات متطورة === */
+    @keyframes vFadeInUp {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes vFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes vSlideInRight {
+        from { opacity: 0; transform: translateX(50px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes vScaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes vFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes vPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes vGlow {
+        0%, 100% { box-shadow: 0 0 10px rgba(255, 189, 89, 0.3); }
+        50% { box-shadow: 0 0 30px rgba(255, 189, 89, 0.6); }
+    }
+
+    @keyframes vWave {
+        0%, 100% { opacity: 0.3; }
+        50% { opacity: 1; }
+    }
+
+    @keyframes vShimmer {
+        0% { background-position: -1000px 0; }
+        100% { background-position: 1000px 0; }
+    }
+
+    .v-container { 
+        max-width: 1100px; 
+        margin: 0 auto; 
+        padding: 2rem; 
+        padding-top: 6rem; 
+    }
+
+    .v-animate-up { animation: vFadeInUp 0.8s ease forwards; }
+    .v-animate-scale { animation: vScaleIn 0.6s ease forwards; }
+    .v-animate-float { animation: vFloat 6s ease-in-out infinite; }
+    .v-delay-1 { animation-delay: 0.1s; }
+    .v-delay-2 { animation-delay: 0.2s; }
+    .v-delay-3 { animation-delay: 0.3s; }
+
+    /* === الهيدر الفاخر === */
+    .v-header { 
+        text-align: center; 
+        margin-bottom: 3rem; 
+        padding: 2.5rem;
+        background: linear-gradient(135deg, var(--card-bg), #222);
+        border-radius: 40px;
+        border: 1px solid rgba(255,189,89,0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        position: relative;
+        overflow: hidden;
+        animation: vFadeInUp 0.8s ease;
+    }
+
+    .v-header::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,189,89,0.05) 0%, transparent 70%);
+        animation: vFloat 10s linear infinite;
+    }
+
+    .v-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    }
+
+    .v-header h1 { 
+        color: var(--primary); 
+        font-size: 3rem; 
+        margin-bottom: 0.5rem; 
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        position: relative;
+        z-index: 2;
+        text-shadow: 0 0 20px rgba(255,189,89,0.3);
+    }
+
+    .v-header h1 i { 
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, var(--primary), #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: vFloat 3s ease-in-out infinite;
+    }
+
+    .v-header p { 
+        color: var(--text-muted); 
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    /* === Tabs محسنة === */
+    .v-tabs { 
+        display: flex; 
+        gap: 1rem; 
+        margin-bottom: 3rem; 
+        justify-content: center; 
+        flex-wrap: wrap; 
+        animation: vFadeInUp 0.8s ease 0.1s both;
+    }
+
+    .v-tab-btn {
+        padding: 1rem 2.5rem; 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 2px solid var(--border);
+        color: var(--text-muted); 
+        border-radius: 50px; 
+        text-decoration: none; 
+        font-weight: 700; 
+        font-size: 1.1rem;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .v-tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .v-tab-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .v-tab-btn i {
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .v-tab-btn span {
+        position: relative;
+        z-index: 2;
+    }
+
+    .v-tab-btn.active { 
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000; 
+        border-color: transparent; 
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.4);
+    }
+
+    .v-tab-btn:hover:not(.active) {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    /* === كروت الإحصائيات === */
+    .v-stats-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); 
+        gap: 1.8rem; 
+        margin-bottom: 3rem; 
+        animation: vFadeInUp 0.8s ease 0.2s both;
+    }
+
+    .v-stat-card { 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 25px; 
+        padding: 2rem; 
+        text-align: center; 
+        border: 1px solid rgba(255,189,89,0.1);
+        transition: all 0.4s;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .v-stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+    }
+
+    .v-stat-card:hover::before {
+        transform: translateX(100%);
+    }
+
+    .v-stat-card:hover { 
+        transform: translateY(-8px); 
+        border-color: var(--primary); 
+        box-shadow: 0 0 30px rgba(255,189,89,0.3);
+    }
+
+    .v-stat-icon {
+        width: 70px;
+        height: 70px;
+        background: rgba(255,189,89,0.1);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1rem;
+        border: 2px solid var(--primary);
+        transition: all 0.3s;
+    }
+
+    .v-stat-card:hover .v-stat-icon {
+        transform: scale(1.1) rotate(5deg);
+        background: rgba(255,189,89,0.2);
+    }
+
+    .v-stat-icon i {
+        font-size: 2rem;
+        color: var(--primary);
+    }
+
+    .v-stat-value { 
+        font-size: 2.5rem; 
+        color: var(--primary); 
+        font-weight: 800;
+        text-shadow: 0 0 20px rgba(255,189,89,0.3);
+        margin-bottom: 0.3rem;
+    }
+
+    .v-stat-label { 
+        color: var(--text-muted);
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    /* === بطاقات الاختصارات === */
+    .v-quick-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); 
+        gap: 2rem; 
+        animation: vFadeInUp 0.8s ease 0.3s both;
+    }
+
+    .v-quick-card { 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 25px; 
+        padding: 2.5rem; 
+        text-align: center; 
+        text-decoration: none; 
+        color: var(--text); 
+        border: 1px solid rgba(255,189,89,0.1);
+        transition: all 0.4s;
+        display: block;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .v-quick-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+    }
+
+    .v-quick-card:hover::before {
+        transform: translateX(100%);
+    }
+
+    .v-quick-card:hover { 
+        border-color: var(--primary); 
+        transform: translateY(-10px); 
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(255,189,89,0.3);
+    }
+
+    .v-quick-icon { 
+        font-size: 4rem; 
+        color: var(--primary); 
+        margin-bottom: 1.5rem;
+        transition: all 0.3s;
+        animation: vFloat 3s ease-in-out infinite;
+    }
+
+    .v-quick-card:hover .v-quick-icon {
+        transform: scale(1.2);
+        filter: drop-shadow(0 0 20px rgba(255,189,89,0.5));
+    }
+
+    .v-quick-card h3 { 
+        color: var(--primary); 
+        font-size: 1.6rem; 
+        margin-bottom: 0.8rem;
+        font-weight: 700;
+    }
+
+    .v-quick-card p { 
+        color: var(--text-muted); 
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    .v-quick-badge {
+        display: inline-block;
+        background: rgba(255,189,89,0.1);
+        color: var(--primary);
+        padding: 0.4rem 1.5rem;
+        border-radius: 40px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border: 1px solid rgba(255,189,89,0.3);
+        transition: all 0.3s;
+    }
+
+    .v-quick-card:hover .v-quick-badge {
+        background: var(--primary);
+        color: #000;
+    }
+
+    /* === زر العودة للرئيسية === */
+    .v-back-home {
+        text-align: center;
+        margin-top: 2.5rem;
+        animation: vFadeInUp 0.8s ease 0.4s both;
+    }
+
+    .v-back-home a {
+        color: var(--text-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border: 1px solid var(--border);
+        border-radius: 40px;
+        transition: all 0.3s;
+    }
+
+    .v-back-home a:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateX(-5px);
+    }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+        .v-container { 
+            padding: 1rem; 
+            padding-top: 5rem; 
+        }
+
+        .v-header h1 { 
+            font-size: 2rem; 
+        }
+
+        .v-header p {
+            font-size: 1rem;
+        }
+
+        .v-tab-btn { 
+            padding: 0.8rem 1.5rem; 
+            font-size: 0.95rem; 
+        }
+
+        .v-stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .v-quick-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* === سكرول مخصص === */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="v-container">
+    <!-- هيدر فاخر -->
+    <div class="v-header">
+        <h1>
+            <i class="fas fa-microphone-alt"></i>
+            لوحة تحكم الفنان الصوتي
+        </h1>
+        <p><i class="fas fa-waveform"></i> مرحباً بك، قم بإدارة ملفك الشخصي وأعمالك الصوتية من هنا</p>
+    </div>
+
+<!-- Tabs محسنة -->
+<div class="v-tabs"> <!-- تغيير من mdl-tabs إلى v-tabs -->
+    <a href="{% url 'services:voice_dashboard' %}" class="v-tab-btn active">الرئيسية</a> <!-- تغيير من mdl-tab-btn إلى v-tab-btn -->
+    <a href="{% url 'services:voice_profile_edit' %}" class="v-tab-btn">المعلومات الشخصية</a>
+    <a href="{% url 'services:voice_portfolio' %}" class="v-tab-btn">معرض الأعمال</a>
+    
+    {% if is_admin_view %}
+    <a href="{% url 'services:admin_close_panel' %}" class="v-tab-btn" style="background: #d35400; color: #fff; border: none;">
+        <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+    </a>
+    {% endif %}
+</div>
+
+    <!-- إحصائيات محسنة -->
+    <div class="v-stats-grid">
+        <div class="v-stat-card">
+            <div class="v-stat-icon">
+                <i class="fas fa-eye"></i>
+            </div>
+            <div class="v-stat-value">{{ profile_views|default:"0" }}</div>
+            <div class="v-stat-label">مشاهدات الملف</div>
+        </div>
+        <div class="v-stat-card">
+            <div class="v-stat-icon">
+                <i class="fas fa-headphones"></i>
+            </div>
+            <div class="v-stat-value">{{ portfolio_count|default:"0" }}</div>
+            <div class="v-stat-label">الأعمال الصوتية</div>
+        </div>
+        <div class="v-stat-card">
+            <div class="v-stat-icon">
+                <i class="fas fa-comments"></i>
+            </div>
+            <div class="v-stat-value">{{ chats_count|default:"0" }}</div>
+            <div class="v-stat-label">المحادثات النشطة</div>
+        </div>
+    </div>
+
+    <!-- بطاقات الاختصارات المحسنة -->
+    <div class="v-quick-grid">
+        <a href="{% url 'services:voice_profile_edit' %}" class="v-quick-card">
+            <div class="v-quick-icon"><i class="fas fa-user-edit"></i></div>
+            <h3>تعديل الملف الشخصي</h3>
+            <p>تحديث بياناتك الشخصية، الصورة، والصوت التعريفي</p>
+            <span class="v-quick-badge">
+                <i class="fas fa-arrow-left"></i> تعديل الآن
+            </span>
+        </a>
+        <a href="{% url 'services:voice_portfolio' %}" class="v-quick-card">
+            <div class="v-quick-icon"><i class="fas fa-headphones"></i></div>
+            <h3>معرض الأعمال الصوتية</h3>
+            <p>إضافة نماذج صوتية جديدة مع وصف لكل عمل</p>
+            <span class="v-quick-badge">
+                <i class="fas fa-arrow-left"></i> إدارة المعرض
+            </span>
+        </a>
+    </div>
+
+    <!-- زر العودة للرئيسية -->
+    <div class="v-back-home">
+        <a href="{% url 'services:home' %}">
+            <i class="fas fa-arrow-right"></i>
+            العودة للصفحة الرئيسية
+        </a>
+    </div>
+</div>
+{% endblock %}

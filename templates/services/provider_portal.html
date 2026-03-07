@@ -1,0 +1,341 @@
+{% extends 'base.html' %}
+
+{% block title %}إدارة أعمالي - ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* استخدام بادئة wrk- لجميع الكلاسات */
+    :root {
+        --wrk-primary: #FFBD59;
+        --wrk-background: #1a1a1a;
+        --wrk-card-bg: #2a2a2a;
+        --wrk-border: #3a3a3a;
+        --wrk-text-muted: #999999;
+        --wrk-foreground: #ffffff;
+        --wrk-danger: #e74c3c;
+    }
+
+    .wrk-container { 
+        max-width: 900px; 
+        margin: 40px auto; 
+        padding: 0 20px; 
+    }
+
+    .wrk-header-section { 
+        text-align: center; 
+        margin-bottom: 2rem; 
+    }
+
+    .wrk-header-section h1 { 
+        color: var(--primary); 
+    }
+    
+    .wrk-card { 
+        background: var(--card-bg); 
+        border: 1px solid var(--border); 
+        border-radius: 8px; 
+        padding: 1.5rem; 
+        margin-bottom: 2rem; 
+        transition: all 0.3s;
+    }
+
+    .wrk-card:hover {
+        border-color: rgba(255, 189, 89, 0.3);
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.1);
+    }
+
+    .wrk-card h3 { 
+        margin-bottom: 1rem; 
+        color: var(--primary); 
+    }
+
+    .wrk-form-row { 
+        display: flex; 
+        gap: 1rem; 
+        flex-wrap: wrap; 
+    }
+
+    .wrk-form-group { 
+        flex: 1; 
+        min-width: 200px; 
+        margin-bottom: 1rem; 
+    }
+
+    .wrk-form-group label { 
+        display: block; 
+        margin-bottom: 0.5rem; 
+        color: var(--text-muted); 
+    }
+
+    .wrk-form-group input, 
+    .wrk-form-group select, 
+    .wrk-form-group textarea { 
+        width: 100%; 
+        padding: 0.75rem; 
+        background: var(--background); 
+        border: 1px solid var(--border); 
+        color: var(--foreground); 
+        border-radius: 5px; 
+        font-family: 'Cairo'; 
+        box-sizing: border-box;
+        transition: all 0.3s;
+    }
+
+    .wrk-form-group input:focus, 
+    .wrk-form-group select:focus, 
+    .wrk-form-group textarea:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 189, 89, 0.2);
+    }
+
+    .wrk-btn { 
+        background: var(--primary); 
+        color: #000; 
+        padding: 0.75rem 1.5rem; 
+        border: none; 
+        border-radius: 5px; 
+        cursor: pointer; 
+        font-weight: bold; 
+        transition: all 0.3s;
+    }
+
+    .wrk-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.3);
+    }
+    
+    .wrk-portfolio-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+        gap: 1.5rem; 
+    }
+
+    .wrk-portfolio-item { 
+        background: var(--background); 
+        border: 1px solid var(--border); 
+        border-radius: 5px; 
+        overflow: hidden; 
+        transition: all 0.3s;
+    }
+
+    .wrk-portfolio-item:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.2);
+    }
+
+    .wrk-item-preview { 
+        height: 180px; 
+        background: #000; 
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        overflow: hidden;
+    }
+
+    .wrk-item-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s;
+    }
+
+    .wrk-portfolio-item:hover .wrk-item-preview img {
+        transform: scale(1.1);
+    }
+
+    .wrk-item-info { 
+        padding: 1rem; 
+    }
+
+    .wrk-item-title { 
+        font-weight: bold; 
+        margin-bottom: 0.5rem; 
+        color: var(--primary);
+    }
+
+    .wrk-item-actions { 
+        margin-top: 0.5rem; 
+    }
+
+    .wrk-btn-sm { 
+        padding: 0.4rem 0.8rem; 
+        font-size: 0.8rem; 
+        border-radius: 3px; 
+        text-decoration: none; 
+        cursor: pointer; 
+        border: none;
+        transition: all 0.3s;
+    }
+
+    .wrk-btn-sm:hover {
+        transform: translateY(-2px);
+    }
+
+    .wrk-btn-danger { 
+        background: var(--wrk-danger); 
+        color: white; 
+    }
+
+    .wrk-btn-danger:hover {
+        background: #c0392b;
+        box-shadow: 0 3px 10px rgba(231, 76, 60, 0.3);
+    }
+    
+    /* Media Players Style */
+    .wrk-item-preview video, 
+    .wrk-item-preview audio { 
+        width: 100%; 
+        height: 100%; 
+        max-height: 180px; 
+    }
+
+    .wrk-embed-container { 
+        position: relative; 
+        width: 100%;
+        height: 180px;
+        overflow: hidden; 
+    }
+
+    .wrk-embed-container iframe { 
+        width: 100%; 
+        height: 100%; 
+        border: none;
+    }
+
+    .wrk-empty-message {
+        color: var(--text-muted); 
+        grid-column: 1/-1; 
+        text-align: center;
+        padding: 3rem;
+        background: rgba(0,0,0,0.2);
+        border-radius: 8px;
+        border: 1px dashed var(--border);
+    }
+
+    .wrk-description-text {
+        font-size:0.8rem; 
+        color:var(--text-muted);
+        margin-bottom: 0.5rem;
+        line-height: 1.4;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrk-container">
+    <div class="wrk-header-section">
+        <h1>لوحة إدارة الأعمال</h1>
+        <p>أضف معرض أعمالك (فيديو، صوت، صور) ليراه العملاء</p>
+    </div>
+
+    <!-- نموذج الإضافة -->
+    <div class="wrk-card">
+        <h3>إضافة عمل جديد</h3>
+        <form method="post">
+            {% csrf_token %}
+            <div class="wrk-form-row">
+                <div class="wrk-form-group">
+                    <label>عنوان العمل</label>
+                    <input type="text" name="title" placeholder="مثال: تصوير إعلاني تجاري" required>
+                </div>
+                <div class="wrk-form-group">
+                    <label>نوع العمل</label>
+                    <select name="item_type">
+                        <option value="video">فيديو (Vimeo/YouTube)</option>
+                        <option value="audio">صوت (MP3)</option>
+                        <option value="image">صورة (رابط)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="wrk-form-group">
+                <label>الرابط (URL)</label>
+                <input type="text" name="media_url" placeholder="الصق رابط الفيديو أو الملف هنا" required>
+            </div>
+            <div class="wrk-form-group">
+                <label>الوصف</label>
+                <textarea name="description" rows="2"></textarea>
+            </div>
+            <button type="submit" class="wrk-btn">إضافة العمل</button>
+        </form>
+    </div>
+
+    <!-- عرض الأعمال الحالية -->
+    <h3 style="margin-bottom: 1rem;">أعمالي الحالية</h3>
+    <div class="wrk-portfolio-grid">
+        {% for item in portfolio_items %}
+        <div class="wrk-portfolio-item">
+            <div class="wrk-item-preview">
+                <!-- عرض حسب النوع -->
+                {% if item.item_type == 'video' %}
+                    <div class="wrk-embed-container">
+                        <iframe src="{{ item.media_url }}" frameborder="0" allowfullscreen></iframe>
+                    </div>
+                {% elif item.item_type == 'audio' %}
+                    <audio controls src="{{ item.media_url }}">متصفحك لا يدعم الصوت</audio>
+                {% elif item.item_type == 'image' %}
+                    <img src="{{ item.media_url }}" alt="{{ item.title }}" style="width:100%; height:100%; object-fit:cover;">
+                {% endif %}
+            </div>
+            <div class="wrk-item-info">
+                <div class="wrk-item-title">{{ item.title }}</div>
+                <div class="wrk-description-text">{{ item.description|truncatechars:50 }}</div>
+                
+                <div class="wrk-item-actions">
+                    <form action="{% url 'services:delete_portfolio_item' item.id %}" method="post" style="display:inline;" onsubmit="return confirm('حذف هذا العمل؟');">
+                        {% csrf_token %}
+                        <button type="submit" class="wrk-btn-sm wrk-btn-danger">حذف</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="wrk-empty-message">
+            <p>لم تقم بإضافة أي أعمال بعد.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        // تأثيرات إضافية للحقول
+        document.querySelectorAll('.wrk-form-group input, .wrk-form-group select, .wrk-form-group textarea').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateX(5px)';
+            });
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateX(0)';
+            });
+        });
+
+        // تحويل روابط YouTube/Vimeo إلى روابط Embed إذا لزم الأمر
+        document.querySelectorAll('.wrk-embed-container iframe').forEach(iframe => {
+            const src = iframe.src;
+            // إذا كان الرابط عادي من YouTube
+            if (src.includes('youtube.com/watch?v=') || src.includes('youtu.be/')) {
+                // تحويل إلى رابط embed
+                let videoId = '';
+                if (src.includes('youtube.com/watch?v=')) {
+                    videoId = src.split('v=')[1].split('&')[0];
+                } else if (src.includes('youtu.be/')) {
+                    videoId = src.split('youtu.be/')[1].split('?')[0];
+                }
+                if (videoId) {
+                    iframe.src = 'https://www.youtube.com/embed/' + videoId;
+                }
+            }
+            // إذا كان الرابط من Vimeo
+            else if (src.includes('vimeo.com/')) {
+                const vimeoId = src.split('vimeo.com/')[1].split('?')[0];
+                if (vimeoId) {
+                    iframe.src = 'https://player.vimeo.com/video/' + vimeoId;
+                }
+            }
+        });
+    })();
+</script>
+{% endblock %}

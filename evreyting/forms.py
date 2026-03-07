@@ -1,85 +1,99 @@
 from django import forms
-from django.contrib.auth.models import User
-from django.core.exceptions import ValidationError
+from .models import Model, ContentCreator, VideoProduction, VoiceArtist, ContentWriting, ContactMessage
 
-class AddUserForm(forms.ModelForm):
-    password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'كلمة المرور'
-        }),
-        label='كلمة المرور'
-    )
-    
-    confirm_password = forms.CharField(
-        widget=forms.PasswordInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'تأكيد كلمة المرور'
-        }),
-        label='تأكيد كلمة المرور'
-    )
-    
-    is_staff = forms.BooleanField(
-        required=False,
-        label='موظف',
-        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'})
-    )
-    
+class ModelForm(forms.ModelForm):
     class Meta:
-        model = User
-        fields = ['username', 'email', 'first_name', 'last_name', 'password', 'is_staff']
+        model = Model
+        fields = ['name', 'age', 'gender', 'height', 'experience', 'phone', 'email', 'image_url', 'is_active']
         widgets = {
-            'username': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'اسم المستخدم'
-            }),
-            'email': forms.EmailInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'البريد الإلكتروني'
-            }),
-            'first_name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'الاسم الأول'
-            }),
-            'last_name': forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'الاسم الأخير'
-            }),
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الاسم'}),
+            'age': forms.NumberInput(attrs={'class': 'form-control', 'placeholder': 'العمر'}),
+            'gender': forms.Select(attrs={'class': 'form-control'}),
+            'height': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الطول'}),
+            'experience': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الخبرة'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'رقم الهاتف'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'البريد الإلكتروني'}),
+            'image_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط الصورة'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-        labels = {
-            'username': 'اسم المستخدم',
-            'email': 'البريد الإلكتروني',
-            'first_name': 'الاسم الأول',
-            'last_name': 'الاسم الأخير',
+
+
+class ContentCreatorForm(forms.ModelForm):
+    class Meta:
+        model = ContentCreator
+        fields = ['name', 'specialty', 'followers', 'platform', 'experience', 'phone', 'email', 'image_url', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الاسم'}),
+            'specialty': forms.Select(attrs={'class': 'form-control'}),
+            'followers': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'عدد المتابعين'}),
+            'platform': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'المنصة'}),
+            'experience': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الخبرة'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'رقم الهاتف'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'البريد الإلكتروني'}),
+            'image_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط الصورة'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
-    
-    def clean_username(self):
-        username = self.cleaned_data.get('username')
-        if User.objects.filter(username=username).exists():
-            raise ValidationError('اسم المستخدم موجود بالفعل')
-        return username
-    
-    def clean_email(self):
-        email = self.cleaned_data.get('email')
-        if User.objects.filter(email=email).exists():
-            raise ValidationError('البريد الإلكتروني موجود بالفعل')
-        return email
-    
-    def clean(self):
-        cleaned_data = super().clean()
-        password = cleaned_data.get('password')
-        confirm_password = cleaned_data.get('confirm_password')
-        
-        if password and confirm_password and password != confirm_password:
-            raise ValidationError('كلمات المرور غير متطابقة')
-        
-        return cleaned_data
-    
-    def save(self, commit=True):
-        user = super().save(commit=False)
-        user.set_password(self.cleaned_data['password'])
-        
-        if commit:
-            user.save()
-        
-        return user
+
+
+class VideoProductionForm(forms.ModelForm):
+    class Meta:
+        model = VideoProduction
+        fields = ['name', 'video_type', 'duration', 'quality', 'description', 'video_url', 'thumbnail_url', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'اسم الفيديو'}),
+            'video_type': forms.Select(attrs={'class': 'form-control'}),
+            'duration': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'المدة'}),
+            'quality': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الجودة'}),
+            'description': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'الوصف', 'rows': 4}),
+            'video_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط الفيديو'}),
+            'thumbnail_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط الصورة المصغرة'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class VoiceArtistForm(forms.ModelForm):
+    class Meta:
+        model = VoiceArtist
+        fields = ['name', 'voice_type', 'specialty', 'experience', 'languages', 'phone', 'email', 'audio_sample_url', 'image_url', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الاسم'}),
+            'voice_type': forms.Select(attrs={'class': 'form-control'}),
+            'specialty': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'التخصص'}),
+            'experience': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الخبرة'}),
+            'languages': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'اللغات'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'رقم الهاتف'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'البريد الإلكتروني'}),
+            'audio_sample_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط عينة صوتية'}),
+            'image_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط الصورة'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class ContentWritingForm(forms.ModelForm):
+    class Meta:
+        model = ContentWriting
+        fields = ['name', 'writing_type', 'specialty', 'experience', 'articles_count', 'phone', 'email', 'image_url', 'is_active']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الاسم'}),
+            'writing_type': forms.Select(attrs={'class': 'form-control'}),
+            'specialty': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'التخصص'}),
+            'experience': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الخبرة'}),
+            'articles_count': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'عدد المقالات'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'رقم الهاتف'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'البريد الإلكتروني'}),
+            'image_url': forms.URLInput(attrs={'class': 'form-control', 'placeholder': 'رابط الصورة'}),
+            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+        }
+
+
+class ContactMessageForm(forms.ModelForm):
+    class Meta:
+        model = ContactMessage
+        fields = ['name', 'email', 'phone', 'service', 'message']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'الاسم الكامل'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'البريد الإلكتروني'}),
+            'phone': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'رقم الهاتف'}),
+            'service': forms.Select(attrs={'class': 'form-control'}),
+            'message': forms.Textarea(attrs={'class': 'form-control', 'placeholder': 'تفاصيل الطلب', 'rows': 5}),
+        }

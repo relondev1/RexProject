@@ -1,0 +1,586 @@
+{% extends 'base.html' %}
+
+{% block title %}معرض الأعمال - صناع المحتوى | ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === أنميشنات === */
+    @keyframes crFadeIn { 
+        from { opacity: 0; transform: translateY(20px); } 
+        to { opacity: 1; transform: translateY(0); } 
+    }
+    @keyframes crScaleIn { 
+        from { opacity: 0; transform: scale(0.9); } 
+        to { opacity: 1; transform: scale(1); } 
+    }
+    @keyframes crFloat { 
+        0%, 100% { transform: translateY(0); } 
+        50% { transform: translateY(-10px); } 
+    }
+    @keyframes crSlideInRight {
+        from { opacity: 0; transform: translateX(50px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes crPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* === الهيدر === */
+    .cr-header {
+        padding: 2.5rem 0;
+        text-align: center;
+        margin-bottom: 2rem;
+        animation: crFadeIn 0.8s ease;
+        position: relative;
+    }
+
+    .cr-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    }
+
+    .cr-header h1 {
+        color: var(--primary);
+        font-size: 2.8rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        text-shadow: 0 0 20px rgba(255, 189, 89, 0.3);
+    }
+    .cr-header h1 i { 
+        animation: crFloat 3s ease-in-out infinite; 
+        background: linear-gradient(135deg, var(--primary), #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+    .cr-header p { 
+        color: var(--text-muted); 
+        font-size: 1.2rem;
+        position: relative;
+        display: inline-block;
+        padding: 0.5rem 2rem;
+        background: rgba(255, 189, 89, 0.05);
+        border-radius: 50px;
+        border: 1px solid rgba(255, 189, 89, 0.2);
+    }
+
+    /* === نظام التابس === */
+    .cr-tabs { 
+        display: flex; 
+        justify-content: center; 
+        gap: 1rem; 
+        margin-bottom: 3rem; 
+        flex-wrap: wrap; 
+        animation: crFadeIn 0.8s ease 0.1s both;
+    }
+
+    .cr-tab-btn {
+        padding: 1rem 2.5rem; 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 2px solid var(--border); 
+        color: var(--text-muted);
+        border-radius: 50px; 
+        text-decoration: none; 
+        font-weight: 700; 
+        font-size: 1.1rem;
+        transition: all 0.4s; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cr-tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+        z-index: 0;
+    }
+
+    .cr-tab-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .cr-tab-btn i { 
+        font-size: 1.2rem; 
+        position: relative;
+        z-index: 1;
+    }
+
+    .cr-tab-btn span {
+        position: relative;
+        z-index: 1;
+    }
+
+    .cr-tab-btn.active {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #000; 
+        border-color: transparent;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4);
+    }
+
+    .cr-tab-btn:hover:not(.active) { 
+        border-color: var(--primary); 
+        color: var(--primary); 
+        transform: translateY(-2px);
+    }
+
+    /* === منطقة الرفع === */
+    .cr-upload-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 30px; 
+        padding: 2.5rem;
+        border: 1px solid rgba(255,189,89,0.1); 
+        margin-bottom: 3rem;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        position: relative;
+        overflow: hidden;
+        animation: crScaleIn 0.8s ease 0.2s both;
+    }
+
+    .cr-upload-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: crPulse 2s infinite;
+    }
+
+    .cr-upload-title {
+        text-align: center; 
+        margin-bottom: 2rem; 
+        font-size: 1.6rem;
+        color: var(--primary); 
+        font-weight: 800;
+        display: flex; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 1rem;
+    }
+
+    .cr-upload-title i {
+        font-size: 2rem;
+        animation: crFloat 3s ease-in-out infinite;
+    }
+
+    .cr-upload-area {
+        border: 3px dashed rgba(255,189,89,0.3); 
+        border-radius: 30px;
+        padding: 3.5rem 2rem; 
+        text-align: center; 
+        cursor: pointer;
+        transition: all 0.4s; 
+        background: rgba(0,0,0,0.2);
+        display: flex; 
+        flex-direction: column; 
+        align-items: center; 
+        justify-content: center; 
+        gap: 1rem;
+    }
+
+    .cr-upload-area:hover { 
+        border-color: var(--primary); 
+        background: rgba(255,189,89,0.05);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.2);
+    }
+
+    .cr-upload-area i { 
+        font-size: 4.5rem; 
+        color: var(--primary);
+        animation: crFloat 3s ease-in-out infinite;
+    }
+
+    .cr-upload-area p { 
+        margin: 0; 
+        color: var(--text); 
+        font-size: 1.3rem; 
+        font-weight: 700; 
+    }
+
+    .cr-upload-area small { 
+        color: var(--primary); 
+        background: rgba(255,189,89,0.1); 
+        padding: 0.6rem 2rem; 
+        border-radius: 40px; 
+        border: 1px solid rgba(255,189,89,0.3);
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
+
+    .cr-upload-area input { 
+        display: none; 
+    }
+
+    /* === المعرض === */
+    .cr-gallery-header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 2rem;
+        animation: crFadeIn 0.8s ease 0.3s both;
+    }
+
+    .cr-gallery-header h3 { 
+        color: var(--primary); 
+        font-size: 1.6rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+    .cr-gallery-header h3 i {
+        font-size: 1.6rem;
+    }
+
+    .cr-count-badge {
+        background: rgba(255,189,89,0.1); 
+        color: var(--primary);
+        padding: 0.4rem 1.5rem; 
+        border-radius: 40px; 
+        font-size: 0.95rem; 
+        font-weight: 700;
+        border: 1px solid rgba(255,189,89,0.3);
+    }
+
+    .cr-gallery-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 1.8rem;
+        animation: crFadeIn 0.8s ease 0.4s both;
+    }
+
+    .cr-gallery-item {
+        position: relative; 
+        aspect-ratio: 9/16;
+        border-radius: 20px; 
+        overflow: hidden;
+        background: #000; 
+        border: 2px solid transparent;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        animation: crScaleIn 0.5s ease backwards;
+    }
+
+    .cr-gallery-item:nth-child(1) { animation-delay: 0.1s; }
+    .cr-gallery-item:nth-child(2) { animation-delay: 0.15s; }
+    .cr-gallery-item:nth-child(3) { animation-delay: 0.2s; }
+    .cr-gallery-item:nth-child(4) { animation-delay: 0.25s; }
+    .cr-gallery-item:nth-child(5) { animation-delay: 0.3s; }
+    .cr-gallery-item:nth-child(6) { animation-delay: 0.35s; }
+
+    .cr-gallery-item:hover { 
+        transform: translateY(-8px) scale(1.02); 
+        border-color: var(--primary); 
+        box-shadow: 0 20px 30px rgba(0,0,0,0.7), 0 0 20px rgba(255,189,89,0.3);
+    }
+    
+    .cr-gallery-item img, 
+    .cr-gallery-item video { 
+        width: 100%; 
+        height: 100%; 
+        object-fit: cover; 
+        transition: transform 0.5s;
+    }
+
+    .cr-gallery-item:hover img,
+    .cr-gallery-item:hover video {
+        transform: scale(1.1);
+    }
+    
+    .cr-media-badge {
+        position: absolute; 
+        top: 12px; 
+        right: 12px;
+        background: rgba(255,189,89,0.95); 
+        color: #000;
+        padding: 0.4rem 1rem; 
+        border-radius: 30px;
+        font-size: 0.75rem; 
+        font-weight: 700; 
+        z-index: 2;
+        display: flex; 
+        align-items: center; 
+        gap: 0.3rem;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .cr-delete-btn {
+        position: absolute; 
+        top: 12px; 
+        left: 12px;
+        background: linear-gradient(135deg, var(--error), #c0392b); 
+        color: #fff;
+        border: none; 
+        width: 36px; 
+        height: 36px; 
+        border-radius: 50%;
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        cursor: pointer; 
+        opacity: 0; 
+        transition: all 0.3s; 
+        z-index: 2;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .cr-gallery-item:hover .cr-delete-btn { 
+        opacity: 1; 
+    }
+
+    .cr-delete-btn:hover { 
+        background: #c0392b; 
+        transform: scale(1.1) rotate(90deg); 
+    }
+
+    .cr-play-icon {
+        position: absolute; 
+        top: 50%; 
+        left: 50%; 
+        transform: translate(-50%, -50%);
+        color: #fff; 
+        font-size: 2.2rem; 
+        background: rgba(255,189,89,0.3);
+        width: 55px; 
+        height: 55px; 
+        border-radius: 50%;
+        display: flex; 
+        align-items: center; 
+        justify-content: center;
+        backdrop-filter: blur(5px);
+        border: 2px solid var(--primary);
+        transition: all 0.3s;
+        pointer-events: none;
+    }
+
+    .cr-gallery-item:hover .cr-play-icon {
+        background: var(--primary);
+        color: #000;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    /* حالة فارغة محسنة */
+    .cr-empty {
+        text-align: center; 
+        padding: 4rem 2rem; 
+        color: var(--text-muted);
+        grid-column: 1/-1; 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 30px;
+        border: 2px dashed var(--border);
+        animation: crScaleIn 0.6s ease;
+    }
+
+    .cr-empty i { 
+        font-size: 4rem; 
+        color: var(--primary); 
+        margin-bottom: 1rem; 
+        opacity: 0.5;
+        animation: crFloat 3s ease-in-out infinite;
+    }
+
+    .cr-empty p {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .cr-empty small {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    /* زر العودة */
+    .cr-back-home {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .cr-back-home a {
+        color: var(--text-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border: 1px solid var(--border);
+        border-radius: 30px;
+        transition: all 0.3s;
+    }
+
+    .cr-back-home a:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateX(-5px);
+    }
+
+    @media (max-width: 768px) {
+        .cr-header h1 { font-size: 2rem; }
+        .cr-header p { font-size: 1rem; }
+        .cr-tabs { gap: 0.8rem; }
+        .cr-tab-btn { padding: 0.8rem 1.5rem; font-size: 0.9rem; }
+        .cr-upload-card { padding: 1.5rem; }
+        .cr-upload-area { padding: 2rem 1rem; }
+        .cr-upload-area i { font-size: 3rem; }
+        .cr-upload-area p { font-size: 1.1rem; }
+        .cr-gallery-grid { grid-template-columns: repeat(2, 1fr); gap: 1rem; }
+        .cr-gallery-header h3 { font-size: 1.3rem; }
+    }
+
+    @media (max-width: 480px) {
+        .cr-gallery-grid { gap: 0.8rem; }
+    }
+
+    /* سكرول مخصص */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="padding-top: 2rem;">
+    <!-- Header محسن -->
+    <div class="cr-header">
+        <h1><i class="fas fa-images"></i> معرض الأعمال</h1>
+        <p><i class="fas fa-camera"></i> أضف ونظم أعمالك الإبداعية</p>
+    </div>
+
+    <!-- Tabs محسنة -->
+<div class="cr-tabs"> <!-- تم تغيير الكلاس هنا أيضاً لتطبيق الستايلات بشكل صحيح -->
+    <a href="{% url 'services:creator_dashboard' %}" class="cr-tab-btn">الرئيسية</a>
+    <a href="{% url 'services:creator_profile_edit' %}" class="cr-tab-btn">المعلومات الشخصية</a>
+    <a href="{% url 'services:creator_portfolio' %}" class="cr-tab-btn active">معرض الأعمال</a>
+    
+    {% if is_admin_view %}
+    <a href="{% url 'services:admin_close_panel' %}" class="cr-tab-btn" style="background: #d35400; color: #fff; border: none;">
+        <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+    </a>
+    {% endif %}
+</div>
+
+    <!-- Upload Section محسنة -->
+    <div class="cr-upload-card">
+        <div class="cr-upload-title">
+            <i class="fas fa-cloud-upload-alt"></i> 
+            رفع أعمال جديدة
+        </div>
+        <form method="post" enctype="multipart/form-data" id="uploadForm">
+            {% csrf_token %}
+            <label class="cr-upload-area">
+                <i class="fas fa-photo-video"></i>
+                <p>اسحب الصور أو الفيديوهات هنا</p>
+                <small>أو اضغط للاختيار (يمكنك اختيار عدة ملفات)</small>
+                <input type="file" name="portfolio_files" multiple accept="image/*,video/*" onchange="document.getElementById('uploadForm').submit();">
+            </label>
+        </form>
+    </div>
+
+    <!-- Gallery Header محسن -->
+    <div class="cr-gallery-header">
+        <h3>
+            <i class="fas fa-th-large"></i>
+            الأعمال الحالية
+        </h3>
+        <span class="cr-count-badge">{{ portfolio_items|length }} عنصر</span>
+    </div>
+
+    <!-- Gallery Grid محسنة -->
+    <div class="cr-gallery-grid">
+        {% for item in portfolio_items %}
+        <div class="cr-gallery-item">
+            <span class="cr-media-badge">
+                {% if item.item_type == 'image' %}
+                    <i class="fas fa-image"></i> صورة
+                {% else %}
+                    <i class="fas fa-video"></i> فيديو
+                {% endif %}
+            </span>
+
+            <form action="{% url 'services:delete_portfolio_item' item.id %}" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا العنصر؟');" style="margin:0;">
+                {% csrf_token %}
+                <button type="submit" class="cr-delete-btn"><i class="fas fa-trash-alt"></i></button>
+            </form>
+
+            {% if item.item_type == 'image' %}
+                <img src="{{ item.media_url }}" alt="">
+            {% else %}
+                <video src="{{ item.media_url }}" muted></video>
+                <div class="cr-play-icon"><i class="fas fa-play"></i></div>
+            {% endif %}
+        </div>
+        {% empty %}
+        <div class="cr-empty">
+            <i class="fas fa-folder-open"></i>
+            <p>لا توجد أعمال مضافة بعد</p>
+            <small>قم برفع صور أو فيديوهات لعرض أعمالك</small>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- زر العودة -->
+    <div class="cr-back-home">
+        <a href="{% url 'services:creator_dashboard' %}">
+            <i class="fas fa-arrow-right"></i>
+            العودة للوحة التحكم
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // تأثير ظهور العناصر
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'scale(1)';
+            }
+        });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.cr-gallery-item').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'scale(0.9)';
+        el.style.transition = 'all 0.5s ease';
+        observer.observe(el);
+    });
+</script>
+{% endblock %}

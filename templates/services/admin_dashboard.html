@@ -1,0 +1,310 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}نظرة عامة - لوحة التحكم{% endblock %}
+
+{% block nav_dashboard %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* أنميشنات */
+    @keyframes adminFadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes adminFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes adminPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* ===== كروت الإحصائيات ===== */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 1.8rem;
+        margin-bottom: 2.5rem;
+        animation: adminFadeInUp 0.8s ease;
+    }
+
+    .stat-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        border-radius: 25px;
+        padding: 2rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+    }
+
+    .stat-card:hover::before {
+        transform: translateX(100%);
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--primary);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px rgba(255,189,89,0.2);
+    }
+
+    .stat-info h3 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin-bottom: 0.3rem;
+        text-shadow: 0 0 20px rgba(255,189,89,0.3);
+    }
+
+    .stat-info p {
+        color: var(--text-muted);
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    .stat-icon {
+        font-size: 3.5rem;
+        color: var(--primary);
+        opacity: 0.7;
+        transition: all 0.4s;
+        animation: adminFloat 3s ease-in-out infinite;
+    }
+
+    .stat-card:hover .stat-icon {
+        transform: scale(1.2) rotate(360deg);
+        opacity: 1;
+    }
+
+    /* ===== كارد الروابط السريعة ===== */
+    .data-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        animation: adminFadeInUp 0.8s ease 0.2s both;
+        position: relative;
+    }
+
+    .data-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: adminPulse 2s infinite;
+    }
+
+    .data-card-header {
+        padding: 1.2rem 1.8rem;
+        border-bottom: 1px solid rgba(255, 189, 89, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .data-card-header h3 {
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .data-card-header i {
+        font-size: 1.3rem;
+        animation: adminFloat 3s ease-in-out infinite;
+    }
+
+    .data-card-body {
+        padding: 1.8rem;
+    }
+
+    .data-card-body p {
+        color: var(--text-muted);
+        font-size: 1rem;
+        margin-bottom: 1.5rem;
+        line-height: 1.6;
+    }
+
+    /* ===== أزرار مخصصة ===== */
+    .btn-sm {
+        padding: 0.8rem 1.8rem;
+        border: none;
+        border-radius: 40px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.4s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .btn-sm::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-sm:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-sm:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+    }
+
+    .btn-warning {
+        background: linear-gradient(135deg, var(--primary), #ffd27f);
+        color: #000;
+    }
+
+    .btn-warning:hover {
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4);
+    }
+
+    .btn-info {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+    }
+
+    .btn-info:hover {
+        box-shadow: 0 10px 25px rgba(52, 152, 219, 0.4);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+    }
+
+    .btn-success:hover {
+        box-shadow: 0 10px 25px rgba(46, 204, 113, 0.4);
+    }
+
+    .btn-group {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem;
+        }
+
+        .stat-info h3 {
+            font-size: 2rem;
+        }
+
+        .btn-group {
+            flex-direction: column;
+        }
+
+        .btn-sm {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Grid -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ users_count|default:"0" }}</h3>
+            <p>إجمالي المستخدمين</p>
+        </div>
+        <i class="fas fa-users stat-icon"></i>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ new_requests|default:"0" }}</h3>
+            <p>طلبات جديدة</p>
+        </div>
+        <i class="fas fa-inbox stat-icon"></i>
+    </div>
+    <div class="stat-card">
+        <div class="stat-info">
+            <h3>{{ total_chats|default:"0" }}</h3>
+            <p>إجمالي المحادثات</p>
+        </div>
+        <i class="fas fa-comments stat-icon"></i>
+    </div>
+</div>
+
+<!-- Quick Links Card -->
+<div class="data-card">
+    <div class="data-card-header">
+        <h3>
+            <i class="fas fa-link"></i>
+            روابط سريعة
+        </h3>
+        <i class="fas fa-arrow-left" style="color: var(--primary);"></i>
+    </div>
+    <div class="data-card-body">
+        <p>
+            <i class="fas fa-info-circle" style="color: var(--primary); margin-left: 0.5rem;"></i>
+            يمكنك من هنا إدارة المحتوى والمستخدمين بكل سهولة
+        </p>
+        <div class="btn-group">
+            <a href="{% url 'services:admin_users' %}" class="btn-sm btn-warning">
+                <i class="fas fa-user-plus"></i>
+                إضافة مستخدم جديد
+            </a>
+            <!-- <a href="{% url 'services:admin_messages' %}" class="btn-sm btn-info">
+                <i class="fas fa-envelope"></i>
+                عرض الطلبات
+            </a>
+            <a href="{% url 'services:admin_portfolio' %}" class="btn-sm btn-success">
+                <i class="fas fa-plus-circle"></i>
+                إضافة عمل جديد
+            </a> -->
+        </div>
+    </div>
+</div>
+{% endblock %}

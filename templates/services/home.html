@@ -1,0 +1,703 @@
+{% extends 'base.html' %}
+
+{% block title %}ريكس - الخدمات الإبداعية{% endblock %}
+
+{% block content %}
+<!-- ===== قسم جديدنا (سلايدر أفقي يتحرك من اليمين لليسار) ===== -->
+<section class="banners-section">
+    <div class="container">
+    </div>
+    
+    <div class="banners-slider-container">
+        {% if banners %}
+            {% for banner in banners|slice:":5" %}
+            <div class="banner-card">
+                <a href="{{ banner.link_url }}" target="_blank">
+                    <img src="{{ banner.image_url }}" alt="{{ banner.title|default:'بنر' }}">
+                </a>
+            </div>
+            {% endfor %}
+            
+            {% for i in "12345"|make_list %}
+                {% if forloop.counter0 >= banners|length %}
+                <div class="banner-card placeholder">
+                    <div class="placeholder-icon"><i class="fas fa-camera"></i></div>
+                    <p>صورة {{ forloop.counter }}</p>
+                </div>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <!-- بنر 1 (افتراضي) -->
+            <div class="banner-card">
+                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=700&q=80" alt="يحقق حلمك">
+            </div>
+            
+            <!-- بنر 2 (افتراضي) -->
+            <div class="banner-card">
+                <img src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=700&q=80" alt="نصورك">
+            </div>
+            
+            <!-- بنر 3 (Placeholder) -->
+            <div class="banner-card placeholder">
+                <div class="placeholder-icon"><i class="fas fa-camera"></i></div>
+                <p>صورة 3</p>
+            </div>
+            
+            <!-- بنر 4 (Placeholder) -->
+            <div class="banner-card placeholder">
+                <div class="placeholder-icon"><i class="fas fa-video"></i></div>
+                <p>صورة 4</p>
+            </div>
+            
+            <!-- بنر 5 (Placeholder) -->
+            <div class="banner-card placeholder">
+                <div class="placeholder-icon"><i class="fas fa-star"></i></div>
+                <p>صورة 5</p>
+            </div>
+        {% endif %}
+    </div>
+</section>
+
+<section id="services" class="services">
+    <div class="container">
+        <h2>خدماتنا</h2>
+        <div class="services-grid">
+            <div class="service-card">
+                <div class="service-icon"><i class="fas fa-users"></i></div>
+                <h3>توفير المودل</h3>
+                <p>نوفر لك أفضل المودلز المحترفين لمشاريعك التجارية والإعلانية بمختلف الأعمار والأنماط</p>
+                <ul class="features">
+                    <li>مودلز محترفين بمختلف الأعمار</li>
+                    <li>تنوع في الأنماط والإطلالات</li>
+                    <li>خبرة في التصوير التجاري</li>
+                </ul>
+                <a href="{% url 'services:model_list' %}" class="btn btn-primary">اطلب الخدمة</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon"><i class="fas fa-camera"></i></div>
+                <h3>صناع المحتوى</h3>
+                <p>فريق من صناع المحتوى المبدعين لإنشاء محتوى جذاب ومؤثر على مختلف منصات التواصل الاجتماعي</p>
+                <ul class="features">
+                    <li>محتوى إبداعي ومبتكر</li>
+                    <li>خبرة في جميع المنصات</li>
+                    <li>استراتيجيات تسويقية فعالة</li>
+                </ul>
+                <a href="{% url 'services:content_creator_list' %}" class="btn btn-primary">اطلب الخدمة</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon"><i class="fas fa-video"></i></div>
+                <h3>إنتاج الفيديو</h3>
+                <p>خدمات إنتاج فيديو احترافية من التخطيط والتصوير حتى المونتاج والإخراج النهائي</p>
+                <ul class="features">
+                    <li>تصوير بجودة سينمائية عالية</li>
+                    <li>مونتاج احترافي ومؤثرات بصرية</li>
+                    <li>كتابة السيناريو والإخراج</li>
+                </ul>
+                <a href="{% url 'services:video_production_list' %}" class="btn btn-primary">اطلب الخدمة</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon"><i class="fas fa-microphone"></i></div>
+                <h3>التعليق الصوتي</h3>
+                <p>أصوات احترافية متنوعة للتعليق الصوتي على الفيديوهات والإعلانات والمحتوى التعليمي</p>
+                <ul class="features">
+                    <li>أصوات متنوعة ومميزة</li>
+                    <li>تسجيل في استوديوهات احترافية</li>
+                    <li>معالجة صوتية عالية الجودة</li>
+                </ul>
+                <a href="{% url 'services:voice_artist_list' %}" class="btn btn-primary">اطلب الخدمة</a>
+            </div>
+
+            <div class="service-card">
+                <div class="service-icon"><i class="fas fa-pen"></i></div>
+                <h3>كتابة المحتوى</h3>
+                <p>كتابة محتوى إبداعي وتسويقي احترافي يناسب علامتك التجارية ويحقق أهدافك التسويقية</p>
+                <ul class="features">
+                    <li>محتوى متوافق مع SEO</li>
+                    <li>كتابة إبداعية وجذابة</li>
+                    <li>بحث شامل ومعلومات دقيقة</li>
+                </ul>
+                <a href="{% url 'services:content_writing_list' %}" class="btn btn-primary">اطلب الخدمة</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== STATS SECTION ==================== -->
+<section class="stats">
+    <div class="container">
+        <div class="stats-grid">
+            <div class="stat-item">
+                <h3>50+</h3>
+                <p>مودل محترف</p>
+            </div>
+            <div class="stat-item">
+                <h3>30+</h3>
+                <p>فنان صوتي</p>
+            </div>
+            <div class="stat-item">
+                <h3>40+</h3>
+                <p>صانع محتوى</p>
+            </div>
+            <div class="stat-item">
+                <h3>100+</h3>
+                <p>مشروع فيديو</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== CTA SECTION ==================== -->
+
+
+<script>
+    // تأثير ظهور العناصر عند التمرير
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.classList.add('revealed');
+            }
+        });
+    }, observerOptions);
+
+    // مراقبة جميع البطاقات والعناصر
+    document.querySelectorAll('.service-card, .stat-item, .footer-content > div, .banner-card').forEach(el => {
+        el.classList.add('scroll-reveal');
+        observer.observe(el);
+    });
+
+    // سلايدر البنرات مع التمرير من اليمين لليسار
+    document.addEventListener('DOMContentLoaded', function() {
+        const track = document.querySelector('.banners-track');
+        const prevButton = document.querySelector('.slider-arrow.prev');
+        const nextButton = document.querySelector('.slider-arrow.next');
+        
+        if (track && prevButton && nextButton) {
+            const cardWidth = 340 + 20; // عرض البطاقة + الـ gap (1.25rem = 20px)
+            const scrollAmount = cardWidth * 2; // التمرير بمقدار بطاقتين
+            
+            prevButton.addEventListener('click', () => {
+                track.scrollBy({
+                    left: -scrollAmount,
+                    behavior: 'smooth'
+                });
+            });
+            
+            nextButton.addEventListener('click', () => {
+                track.scrollBy({
+                    left: scrollAmount,
+                    behavior: 'smooth'
+                });
+            });
+            
+            // إظهار/إخفاء الأسهم حسب موضع التمرير
+            const checkScrollPosition = () => {
+                const maxScrollLeft = track.scrollWidth - track.clientWidth;
+                
+                if (track.scrollLeft <= 10) {
+                    prevButton.style.opacity = '0.5';
+                    prevButton.style.pointerEvents = 'none';
+                } else {
+                    prevButton.style.opacity = '1';
+                    prevButton.style.pointerEvents = 'auto';
+                }
+                
+                if (track.scrollLeft >= maxScrollLeft - 10) {
+                    nextButton.style.opacity = '0.5';
+                    nextButton.style.pointerEvents = 'none';
+                } else {
+                    nextButton.style.opacity = '1';
+                    nextButton.style.pointerEvents = 'auto';
+                }
+            };
+            
+            track.addEventListener('scroll', checkScrollPosition);
+            checkScrollPosition(); // التحقق عند التحميل
+        }
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* أنيميشن دخول للصفحة */
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-50px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    @keyframes scaleIn {
+        from {
+            opacity: 0;
+            transform: scale(0.9);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    @keyframes float {
+        0% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+        100% {
+            transform: translateY(0px);
+        }
+    }
+
+    @keyframes glow {
+        0% {
+            box-shadow: 0 0 5px rgba(255, 189, 89, 0.2);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(255, 189, 89, 0.4);
+        }
+        100% {
+            box-shadow: 0 0 5px rgba(255, 189, 89, 0.2);
+        }
+    }
+
+ /* ==================== BANNER SLIDER SECTION ==================== */
+.banners-section {
+    padding: 5rem 0 3rem 0;
+    background-color: var(--background);
+    position: relative;
+}
+
+.banners-title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 2.5rem;
+    color: var(--primary);
+    font-weight: bold;
+}
+
+/* Horizontal Scroll Container */
+.banners-slider-container {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    padding: 1rem 1.5rem 2.5rem 1.5rem;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--secondary);
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Custom Scrollbar Styling */
+.banners-slider-container::-webkit-scrollbar {
+    height: 6px;
+}
+.banners-slider-container::-webkit-scrollbar-track {
+    background: var(--secondary);
+    border-radius: 10px;
+}
+.banners-slider-container::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 10px;
+}
+
+.banner-card {
+    flex: 0 0 auto;
+    width: 340px;
+    height: 600px;
+    background-color: var(--card);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    scroll-snap-align: start;
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+    position: relative;
+    border: 2px dashed rgba(255, 189, 89, 0.2);
+}
+
+.banner-card a {
+    display: block;
+    width: 100%;
+    height: 100%;
+    text-decoration: none;
+}
+
+.banner-card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 15px 35px rgba(255, 189, 89, 0.2);
+    border-color: var(--primary);
+    border-style: solid;
+}
+
+.banner-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    transition: transform 0.6s ease;
+}
+
+.banner-card:hover img {
+    transform: scale(1.1);
+}
+
+.banner-card.placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #2d2d2d, #1a1a1a);
+    color: var(--muted-foreground);
+    text-align: center;
+}
+
+.banner-card.placeholder:hover {
+    transform: scale(1.03);
+    border-color: var(--primary);
+    border-style: solid;
+}
+
+.placeholder-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.3;
+    color: var(--primary);
+}
+
+.banner-card.placeholder p {
+    color: var(--muted-foreground);
+    font-size: 1rem;
+}
+
+/* تحسينات للشاشات المختلفة */
+@media (max-width: 768px) {
+    .banners-title {
+        font-size: 2rem;
+    }
+    .banner-card {
+        width: 280px;
+        height: 500px;
+    }
+}
+
+@media (max-width: 480px) {
+    .banner-card {
+        width: 260px;
+        height: 460px;
+    }
+}
+
+    /* ==================== SERVICES SECTION ==================== */
+    .services {
+        padding: 5rem 0;
+        background-color: var(--background);
+        position: relative;
+    }
+
+    .services h2 {
+        text-align: center;
+        font-size: 3rem;
+        margin-bottom: 3rem;
+        color: var(--primary);
+        animation: fadeInUp 1s ease;
+        position: relative;
+        display: inline-block;
+        width: 100%;
+    }
+
+    .services h2::after {
+        content: '';
+        position: absolute;
+        bottom: -10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    }
+
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 2rem;
+    }
+
+    .service-card {
+        background-color: var(--card-bg);
+        border-radius: 20px;
+        padding: 2rem;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+        animation: scaleIn 0.8s ease backwards;
+        border: 1px solid rgba(255, 189, 89, 0.1);
+    }
+
+    .service-card:nth-child(1) { animation-delay: 0.1s; }
+    .service-card:nth-child(2) { animation-delay: 0.2s; }
+    .service-card:nth-child(3) { animation-delay: 0.3s; }
+    .service-card:nth-child(4) { animation-delay: 0.4s; }
+    .service-card:nth-child(5) { animation-delay: 0.5s; }
+
+    .service-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, transparent 0%, rgba(255, 189, 89, 0.05) 100%);
+        opacity: 0;
+        transition: opacity 0.4s;
+    }
+
+    .service-card:hover {
+        transform: translateY(-15px) scale(1.02);
+        box-shadow: 0 20px 40px rgba(255, 189, 89, 0.15);
+        border-color: var(--primary);
+    }
+
+    .service-card:hover::before {
+        opacity: 1;
+    }
+
+    .service-icon {
+        font-size: 3.5rem;
+        margin-bottom: 1.5rem;
+        animation: float 3s ease-in-out infinite;
+        background: rgba(255, 189, 89, 0.1);
+        width: 80px;
+        height: 80px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 20px;
+        margin-bottom: 1.5rem;
+    }
+
+    .service-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+        color: var(--primary);
+        position: relative;
+        display: inline-block;
+    }
+
+    .service-card h3::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        right: 0;
+        width: 40px;
+        height: 2px;
+        background-color: var(--primary);
+        transition: width 0.3s ease;
+    }
+
+    .service-card:hover h3::after {
+        width: 100%;
+    }
+
+    .service-card p {
+        color: var(--text-light);
+        margin-bottom: 1.5rem;
+        font-size: 0.95rem;
+    }
+
+    .features {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 1.5rem 0;
+    }
+
+    .features li {
+        color: var(--text-muted);
+        margin-bottom: 0.5rem;
+        font-size: 0.9rem;
+        transition: transform 0.3s ease;
+    }
+
+    .features li:hover {
+        transform: translateX(-5px);
+        color: var(--primary);
+    }
+
+    .features li::before {
+        content: '✓ ';
+        color: var(--success);
+        font-weight: bold;
+        margin-left: 0.5rem;
+    }
+
+    /* ==================== STATS SECTION ==================== */
+    .stats {
+        background: linear-gradient(135deg, var(--card-bg) 0%, #1a1a1a 100%);
+        padding: 5rem 0;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stats::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 189, 89, 0.05) 0%, transparent 50%);
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        from {
+            transform: rotate(0deg);
+        }
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 3rem;
+        text-align: center;
+        position: relative;
+        z-index: 1;
+    }
+
+    .stat-item {
+        animation: scaleIn 0.8s ease backwards;
+    }
+
+    .stat-item:nth-child(1) { animation-delay: 0.1s; }
+    .stat-item:nth-child(2) { animation-delay: 0.2s; }
+    .stat-item:nth-child(3) { animation-delay: 0.3s; }
+    .stat-item:nth-child(4) { animation-delay: 0.4s; }
+
+    .stat-item h3 {
+        font-size: 3rem;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+        font-weight: 800;
+        transition: all 0.3s ease;
+        text-shadow: 0 0 20px rgba(255, 189, 89, 0.3);
+    }
+
+    .stat-item:hover h3 {
+        transform: scale(1.1);
+    }
+
+    .stat-item p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        font-weight: 500;
+    }
+
+    /* ==================== CTA SECTION ==================== */
+    .cta {
+        background: linear-gradient(135deg, var(--secondary) 0%, var(--secondary-dark) 100%);
+        color: var(--foreground);
+        padding: 5rem 0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .cta::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg width="20" height="20" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg"><circle cx="2" cy="2" r="2" fill="rgba(255,255,255,0.05)"/></svg>');
+        animation: moveBackground 20s linear infinite;
+    }
+
+    @keyframes moveBackground {
+        from {
+            transform: translateY(0);
+        }
+        to {
+            transform: translateY(-20px);
+        }
+    }
+
+    .cta h2 {
+        margin-bottom: 1rem;
+        font-size: 2.5rem;
+        animation: fadeInUp 1s ease;
+        position: relative;
+    }
+
+    .cta p {
+        margin-bottom: 2rem;
+        font-size: 1.25rem;
+        animation: fadeInUp 1s ease 0.2s both;
+        position: relative;
+    }
+
+    .cta .btn {
+        animation: fadeInUp 1s ease 0.4s both;
+        position: relative;
+    }
+
+    /* تأثيرات تمرير إضافية */
+    .scroll-reveal {
+        opacity: 0;
+        transform: translateY(30px);
+        transition: all 0.8s ease;
+    }
+
+    .scroll-reveal.revealed {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}

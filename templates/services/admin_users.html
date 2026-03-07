@@ -1,0 +1,1118 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}إدارة المستخدمين - ريكس{% endblock %}
+
+<!-- تفعيل زر "المستخدمين" في القائمة الجانبية -->
+{% block nav_users %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === أنميشنات === */
+    @keyframes adminFadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes adminFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @keyframes adminPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes adminGlow {
+        0%, 100% { box-shadow: 0 0 5px rgba(255, 189, 89, 0.3); }
+        50% { box-shadow: 0 0 20px rgba(255, 189, 89, 0.6); }
+    }
+
+    @keyframes adminSlideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes adminScaleIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    /* === كارد البيانات === */
+    .data-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        border-radius: 25px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        margin-bottom: 2rem;
+        animation: adminFadeInUp 0.8s ease;
+        position: relative;
+    }
+
+    .data-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: adminPulse 2s infinite;
+    }
+
+    .card-header {
+        padding: 1.2rem 1.8rem;
+        border-bottom: 1px solid rgba(255, 189, 89, 0.2);
+        background: rgba(0,0,0,0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .card-header h3 {
+        color: var(--primary);
+        font-size: 1.2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin: 0;
+    }
+
+    .card-header i {
+        font-size: 1.3rem;
+        filter: drop-shadow(0 0 8px rgba(255, 189, 89, 0.5));
+    }
+
+    /* === أنماط النموذج === */
+    .form-row { 
+        display: flex; 
+        gap: 1.5rem; 
+        margin-bottom: 1.5rem; 
+    }
+
+    .form-group { 
+        flex: 1; 
+    }
+
+    .form-group label { 
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem; 
+        color: var(--text-muted); 
+        font-size: 0.9rem; 
+        font-weight: 500;
+    }
+
+    .form-group label i {
+        color: var(--primary);
+        filter: drop-shadow(0 0 5px rgba(255, 189, 89, 0.3));
+    }
+
+    .form-group input, 
+    .form-group select {
+        width: 100%; 
+        padding: 0.9rem 1.2rem;
+        background-color: rgba(0,0,0,0.3); 
+        border: 2px solid var(--border);
+        border-radius: 15px; 
+        color: var(--foreground); 
+        font-family: 'Cairo';
+        font-size: 0.95rem;
+        transition: all 0.3s;
+    }
+
+    .form-group input:focus, 
+    .form-group select:focus { 
+        outline: none; 
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(255,189,89,0.1);
+        background: rgba(0,0,0,0.5);
+    }
+
+    .btn-add {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000;
+        padding: 1rem 2rem; 
+        border: none; 
+        border-radius: 50px;
+        font-weight: 800; 
+        cursor: pointer; 
+        font-family: 'Cairo';
+        font-size: 1rem;
+        transition: all 0.4s;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .btn-add::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-add:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-add:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.4);
+    }
+
+    /* === أدوات البحث والتصفية === */
+    .filter-tools {
+        display: flex;
+        gap: 1rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .search-box {
+        position: relative;
+        min-width: 300px;
+    }
+
+    .search-box i {
+        position: absolute;
+        right: 1.2rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        filter: drop-shadow(0 0 5px rgba(255, 189, 89, 0.3));
+        z-index: 1;
+    }
+
+    .search-box input {
+        width: 100%;
+        padding: 0.9rem 3rem 0.9rem 1.5rem;
+        background: rgba(0,0,0,0.3);
+        border: 2px solid var(--border);
+        border-radius: 40px;
+        color: var(--text);
+        font-family: 'Cairo';
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+
+    .search-box input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(255,189,89,0.1);
+        background: rgba(0,0,0,0.5);
+    }
+
+    .search-box input::placeholder {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    /* === الفلاتر المرئية === */
+    .visible-filters {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.5rem 1.2rem;
+        background: rgba(255,189,89,0.1);
+        border: 1px solid rgba(255,189,89,0.3);
+        border-radius: 30px;
+        color: var(--primary);
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        filter: drop-shadow(0 0 5px rgba(255, 189, 89, 0.2));
+        white-space: nowrap;
+    }
+
+    .filter-badge:hover {
+        background: rgba(255,189,89,0.2);
+        transform: translateY(-2px);
+        filter: drop-shadow(0 0 10px rgba(255, 189, 89, 0.4));
+    }
+
+    .filter-badge.active {
+        background: var(--primary);
+        color: #000;
+        filter: drop-shadow(0 0 15px rgba(255, 189, 89, 0.6));
+    }
+
+    .filter-badge i {
+        font-size: 0.9rem;
+        filter: drop-shadow(0 0 5px currentColor);
+    }
+
+    /* === تصميم الدروب داون الجديد === */
+    .filter-dropdown-container {
+        position: relative;
+        display: inline-block;
+    }
+
+    .filter-dropdown-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.5rem 1.5rem;
+        background: linear-gradient(145deg, rgba(255,189,89,0.1), rgba(255,189,89,0.05));
+        border: 1px solid rgba(255,189,89,0.3);
+        border-radius: 40px;
+        color: var(--primary);
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        height: 42px;
+        box-sizing: border-box;
+        backdrop-filter: blur(5px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+
+    .filter-dropdown-btn:hover {
+        background: linear-gradient(145deg, rgba(255,189,89,0.2), rgba(255,189,89,0.1));
+        border-color: var(--primary);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(255,189,89,0.3);
+    }
+
+    .filter-dropdown-btn i:first-child {
+        font-size: 1rem;
+        filter: drop-shadow(0 0 5px rgba(255,189,89,0.5));
+    }
+
+    .filter-dropdown-btn i:last-child {
+        font-size: 0.8rem;
+        transition: transform 0.3s ease;
+        margin-right: 0.3rem;
+    }
+
+    .filter-dropdown-btn.active i:last-child {
+        transform: rotate(180deg);
+    }
+
+    .filter-dropdown-menu {
+        position: absolute;
+        top: calc(100% + 10px);
+        left: 0;
+        min-width: 240px;
+        background: linear-gradient(145deg, var(--bg-card), #222);
+        border: 1px solid rgba(255,189,89,0.2);
+        border-radius: 20px;
+        padding: 0.8rem;
+        display: none;
+        flex-direction: column;
+        gap: 0.3rem;
+        box-shadow: 0 15px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,189,89,0.1) inset;
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+        transform-origin: top right;
+    }
+
+    .filter-dropdown-menu.show {
+        display: flex;
+        animation: adminScaleIn 0.25s ease;
+    }
+
+    .filter-dropdown-item {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        padding: 0.8rem 1.2rem;
+        border-radius: 15px;
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
+
+    .filter-dropdown-item:hover {
+        background: rgba(255,189,89,0.1);
+        color: var(--primary);
+        border-color: rgba(255,189,89,0.3);
+        transform: translateX(-3px);
+    }
+
+    .filter-dropdown-item i {
+        width: 20px;
+        font-size: 1rem;
+        color: var(--primary);
+        filter: drop-shadow(0 0 5px rgba(255,189,89,0.3));
+    }
+
+    .filter-dropdown-item.active {
+        background: rgba(255,189,89,0.15);
+        color: var(--primary);
+        border-color: rgba(255,189,89,0.4);
+        font-weight: 600;
+    }
+
+    .filter-dropdown-item.active i {
+        color: var(--primary);
+    }
+
+    .filter-dropdown-divider {
+        height: 1px;
+        background: linear-gradient(90deg, transparent, rgba(255,189,89,0.3), transparent);
+        margin: 0.5rem 0;
+    }
+
+    .filter-dropdown-header {
+        padding: 0.5rem 1.2rem;
+        color: var(--text-muted);
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* === زر مسح الفلاتر === */
+    .clear-filter {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1.5rem;
+        border: 1px solid var(--border);
+        border-radius: 30px;
+        transition: all 0.3s;
+        height: 42px;
+        box-sizing: border-box;
+        background: rgba(255,255,255,0.02);
+    }
+
+    .clear-filter:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(255,189,89,0.1);
+        transform: translateY(-2px);
+    }
+
+    /* === أنماط الجدول === */
+    .table-container { 
+        overflow-x: auto; 
+        padding: 0 1.5rem 1.5rem 1.5rem;
+    }
+
+    table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        min-width: 800px; /* زيادة العرض لاستيعاب الزر الجديد */
+    }
+
+    th, td { 
+        padding: 1.2rem 1rem; 
+        text-align: right; 
+        border-bottom: 1px solid rgba(255,189,89,0.1);
+    }
+
+    th { 
+        color: var(--text-muted); 
+        font-weight: 600; 
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    tr:hover { 
+        background: rgba(255,189,89,0.02);
+    }
+
+    /* === Badges للرتب === */
+    .badge { 
+        padding: 0.4rem 1rem; 
+        border-radius: 30px; 
+        font-size: 0.8rem; 
+        font-weight: 600; 
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        border: 1px solid transparent;
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+
+    .badge i {
+        font-size: 0.7rem;
+        filter: drop-shadow(0 0 5px currentColor);
+    }
+
+    .bg-admin { 
+        background: rgba(231, 76, 60, 0.15); 
+        color: #ff6b6b; 
+        border-color: rgba(231, 76, 60, 0.3);
+    }
+
+    .bg-model { 
+        background: rgba(155, 89, 182, 0.15); 
+        color: #a29bfe; 
+        border-color: rgba(155, 89, 182, 0.3);
+    }
+
+    .bg-creator { 
+        background: rgba(255, 189, 89, 0.15); 
+        color: var(--primary); 
+        border-color: rgba(255, 189, 89, 0.3);
+    }
+
+    .bg-client { 
+        background: rgba(149, 165, 166, 0.15); 
+        color: #dfe6e9; 
+        border-color: rgba(149, 165, 166, 0.3);
+    }
+
+    .bg-videographer { 
+        background: rgba(52, 152, 219, 0.15); 
+        color: #74b9ff; 
+        border-color: rgba(52, 152, 219, 0.3);
+    }
+
+    .bg-voice { 
+        background: rgba(46, 204, 113, 0.15); 
+        color: var(--success); 
+        border-color: rgba(46, 204, 113, 0.3);
+    }
+
+    .bg-writer { 
+        background: rgba(241, 196, 15, 0.15); 
+        color: #f1c40f; 
+        border-color: rgba(241, 196, 15, 0.3);
+    }
+
+    /* === أزرار صغيرة === */
+    .btn-sm {
+        padding: 0.6rem 1.2rem; 
+        border-radius: 40px;
+        text-decoration: none; 
+        font-size: 0.85rem; 
+        border: none;
+        cursor: pointer; 
+        font-family: 'Cairo'; 
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-sm::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-sm:hover::before {
+        width: 200px;
+        height: 200px;
+    }
+
+    .btn-sm:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn-warning { 
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000; 
+    }
+
+    .btn-warning:hover {
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .btn-danger { 
+        background: linear-gradient(135deg, var(--danger), #c0392b); 
+        color: #fff; 
+    }
+
+    .btn-danger:hover {
+        box-shadow: 0 5px 15px rgba(231, 76, 60, 0.3);
+    }
+
+    .btn-success {
+        background: linear-gradient(135deg, var(--success), #27ae60);
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+    }
+
+    /* === زر لوحة التحكم الجديد (Dashboard) === */
+    .btn-dashboard {
+        background: linear-gradient(135deg, #00cec9, #0984e3);
+        color: #fff;
+        box-shadow: 0 5px 15px rgba(9, 132, 227, 0.3);
+    }
+
+    .btn-dashboard:hover {
+        box-shadow: 0 8px 25px rgba(9, 132, 227, 0.4);
+        background: linear-gradient(135deg, #55efc4, #00b894);
+    }
+
+    .btn-disabled {
+        background: rgba(255,255,255,0.05);
+        color: var(--text-muted);
+        border: 1px solid var(--border);
+        cursor: not-allowed;
+        opacity: 0.5;
+    }
+
+    .btn-disabled:hover {
+        transform: none;
+        box-shadow: none;
+    }
+
+    .btn-disabled::before {
+        display: none;
+    }
+
+    /* === حالة المستخدم === */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.3rem 1rem;
+        border-radius: 30px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        filter: drop-shadow(0 0 8px currentColor);
+    }
+
+    .status-active {
+        background: rgba(46, 204, 113, 0.15);
+        color: var(--success);
+        border: 1px solid rgba(46, 204, 113, 0.3);
+    }
+
+    .status-inactive {
+        background: rgba(231, 76, 60, 0.15);
+        color: var(--danger);
+        border: 1px solid rgba(231, 76, 60, 0.3);
+    }
+
+    /* === مجموعة الأزرار === */
+    .action-group {
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    /* === رسالة منع الحذف === */
+    .protected-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.3rem;
+        padding: 0.2rem 0.8rem;
+        background: rgba(255,189,89,0.1);
+        color: var(--primary);
+        border-radius: 30px;
+        font-size: 0.7rem;
+        border: 1px solid rgba(255,189,89,0.3);
+        filter: drop-shadow(0 0 5px rgba(255,189,89,0.3));
+    }
+
+    /* === إحصائيات سريعة === */
+    .stats-mini {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .stat-mini-item {
+        background: rgba(255,189,89,0.05);
+        border: 1px solid rgba(255,189,89,0.1);
+        border-radius: 30px;
+        padding: 0.3rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .stat-mini-item i {
+        color: var(--primary);
+        filter: drop-shadow(0 0 5px rgba(255,189,89,0.3));
+    }
+
+    .stat-mini-item span {
+        color: var(--text-muted);
+    }
+
+    .stat-mini-item strong {
+        color: var(--primary);
+        margin-right: 0.3rem;
+    }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+        .form-row {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .action-group {
+            flex-direction: column;
+        }
+
+        .btn-sm {
+            width: 100%;
+            justify-content: center;
+        }
+
+        td {
+            padding: 1rem 0.8rem;
+        }
+
+        .card-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .filter-tools {
+            width: 100%;
+        }
+
+        .search-box {
+            min-width: 100%;
+        }
+
+        .visible-filters {
+            display: none;
+        }
+
+        .filter-dropdown-container {
+            width: 100%;
+        }
+
+        .filter-dropdown-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .filter-dropdown-menu {
+            left: 0;
+            right: 0;
+        }
+
+        .clear-filter {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+    
+    /* إخفاء النص على الشاشات الصغيرة */
+    @media (max-width: 768px) {
+        .action-text {
+            display: none;
+        }
+        
+        .btn-sm {
+            padding: 0.6rem;
+        }
+        
+        .btn-sm i {
+            margin: 0;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}
+<div style="display: flex; align-items: center; gap: 0.5rem;">
+    <i class="fas fa-users-cog" style="color: var(--primary); filter: drop-shadow(0 0 10px rgba(255,189,89,0.5));"></i>
+    <span>إدارة المستخدمين والصلاحيات</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- إحصائيات سريعة -->
+<div class="stats-mini">
+    <div class="stat-mini-item">
+        <i class="fas fa-users"></i>
+        <span>إجمالي المستخدمين:</span>
+        <strong>{{ users|length }}</strong>
+    </div>
+</div>
+
+<!-- نموذج إضافة مستخدم -->
+<div class="data-card" style="animation: adminFadeInUp 0.8s ease 0.1s both;">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-user-plus"></i>
+            إضافة مستخدم جديد
+        </h3>
+    </div>
+    <div style="padding: 1.5rem;">
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-user"></i>
+                        اسم المستخدم
+                    </label>
+                    <input type="text" name="username" placeholder="أدخل اسم المستخدم" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-envelope"></i>
+                        البريد الإلكتروني
+                    </label>
+                    <input type="email" name="email" placeholder="user@example.com" required>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-lock"></i>
+                        كلمة المرور
+                    </label>
+                    <input type="password" name="password" placeholder="********" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-tag"></i>
+                        الرتبة / الصلاحية
+                    </label>
+                    <select name="role">
+                        <option value="client">👤 عميل</option>
+                        <option value="admin">⚡ مدير (Admin)</option>
+                        <option value="model">📸 مودل (Model)</option>
+                        <option value="creator">🎬 صانع محتوى (Creator)</option>
+                        <option value="videographer">🎥 منتج فيديو</option>
+                        <option value="voice">🎤 فنان صوتي</option>
+                        <option value="writer">✍️ كاتب محتوى</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="btn-add">
+                <i class="fas fa-save"></i>
+                إنشاء الحساب
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- جدول المستخدمين مع الفلاتر والبحث -->
+<div class="data-card" style="animation: adminFadeInUp 0.8s ease 0.2s both;">
+    <div class="card-header">
+        <h3>
+            <i class="fas fa-list"></i>
+            قائمة المستخدمين
+        </h3>
+        
+        <!-- أدوات البحث والتصفية -->
+        <div class="filter-tools">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="بحث عن مستخدم..." onkeyup="filterUsers()">
+            </div>
+            
+            <div class="visible-filters">
+                <!-- أول 3 فلاتر -->
+                <span class="filter-badge" onclick="filterByRole('all', this)">
+                    <i class="fas fa-users"></i> الكل
+                </span>
+                <span class="filter-badge" onclick="filterByRole('admin', this)">
+                    <i class="fas fa-crown"></i> مدير
+                </span>
+                <span class="filter-badge" onclick="filterByRole('model', this)">
+                    <i class="fas fa-camera"></i> مودل
+                </span>
+            </div>
+            
+            <!-- الدروب داون الجديد -->
+            <div class="filter-dropdown-container">
+                <div class="filter-dropdown-btn" id="filterDropdownBtn">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>المزيد من الفلاتر</span>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+                <div class="filter-dropdown-menu" id="filterDropdownMenu">
+                    <div class="filter-dropdown-header">فلاتر إضافية</div>
+                    <div class="filter-dropdown-item" onclick="filterByRole('creator', this)">
+                        <i class="fas fa-video"></i>
+                        <span>صانع محتوى</span>
+                    </div>
+                    <div class="filter-dropdown-item" onclick="filterByRole('videographer', this)">
+                        <i class="fas fa-film"></i>
+                        <span>منتج فيديو</span>
+                    </div>
+                    <div class="filter-dropdown-item" onclick="filterByRole('voice', this)">
+                        <i class="fas fa-microphone"></i>
+                        <span>فنان صوتي</span>
+                    </div>
+                    <div class="filter-dropdown-item" onclick="filterByRole('writer', this)">
+                        <i class="fas fa-pen"></i>
+                        <span>كاتب محتوى</span>
+                    </div>
+                    <div class="filter-dropdown-divider"></div>
+                    <div class="filter-dropdown-item" onclick="filterByRole('client', this)">
+                        <i class="fas fa-user"></i>
+                        <span>عميل</span>
+                    </div>
+                </div>
+            </div>
+            
+            <a href="javascript:void(0)" onclick="clearFilters()" class="clear-filter">
+                <i class="fas fa-times"></i> مسح الفلاتر
+            </a>
+        </div>
+    </div>
+    
+    <div class="table-container">
+        <table id="usersTable">
+            <thead>
+                <tr>
+                    <th>المستخدم</th>
+                    <th>البريد الإلكتروني</th>
+                    <th>الرتبة</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
+                </tr>
+            </thead>
+            <tbody id="usersTableBody">
+                {% for user in users %}
+                <tr class="user-row" data-role="{{ user.role }}" data-username="{{ user.username|lower }}" data-email="{{ user.email|lower }}">
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <i class="fas fa-user-circle" style="color: var(--primary); font-size: 1.2rem; filter: drop-shadow(0 0 5px rgba(255,189,89,0.3));"></i>
+                            <span>{{ user.username }}</span>
+                            <!-- المستخدمين relon و rex محميين -->
+                            {% if user.username|lower == 'relon' or user.username|lower == 'rex' %}
+                                <span class="protected-badge">
+                                    <i class="fas fa-shield-alt"></i> محمي
+                                </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>{{ user.email }}</td>
+                    <td>
+                        <span class="badge bg-{{ user.role }}">
+                            <i class="fas fa-{% if user.role == 'admin' %}crown{% elif user.role == 'model' %}camera{% elif user.role == 'creator' %}video{% elif user.role == 'videographer' %}film{% elif user.role == 'voice' %}microphone{% elif user.role == 'writer' %}pen{% else %}user{% endif %}"></i>
+                            {% if user.role == 'admin' %} مدير 
+                            {% elif user.role == 'model' %} مودل 
+                            {% elif user.role == 'creator' %} صانع محتوى
+                            {% elif user.role == 'videographer' %} منتج فيديو
+                            {% elif user.role == 'voice' %} فنان صوتي
+                            {% elif user.role == 'writer' %} كاتب
+                            {% elif user.role == 'provider' %} مزود خدمة
+                            {% elif user.role == 'management' %} إدارة
+                            {% else %} عميل {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if user.is_active %}
+                            <span class="status-badge status-active">
+                                <i class="fas fa-check-circle"></i>
+                                نشط
+                            </span>
+                        {% else %}
+                            <span class="status-badge status-inactive">
+                                <i class="fas fa-times-circle"></i>
+                                موقوف
+                            </span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div class="action-group">
+                            
+                            <!-- === زر لوحة التحكم الجديد === -->
+                            <!-- === زر لوحة التحكم الجديد === -->
+<!-- نستخدم رابط الأدمن المخصص الذي يدعم user_id -->
+<!-- === زر لوحة التحكم (مصحح) === -->
+<a href="{% url 'services:admin_open_panel' user.id %}" class="btn-sm btn-dashboard" title="دخول لوحة التحكم">
+    <i class="fas fa-external-link-alt"></i>
+    <span class="action-text">لوحة التحكم</span>
+</a>
+
+                            <!-- زر التعديل -->
+                            <a href="{% url 'services:admin_edit_user' user.id %}" class="btn-sm btn-warning" title="تعديل البيانات">
+                                <i class="fas fa-edit"></i>
+                                <span class="action-text">تعديل</span>
+                            </a>
+
+                            <!-- إذا كان المستخدم relon أو rex، لا تظهر أزرار الحذف والإيقاف -->
+                            {% if user.username|lower != 'relon' and user.username|lower != 'rex' %}
+                                <!-- زر الحذف (لغير الأدمن) -->
+                                {% if user.id != request.user.id %}
+                                    <form action="{% url 'services:admin_delete_user' user.id %}" method="post" style="display:inline;" onsubmit="return confirm('هل أنت متأكد من حذف هذا المستخدم؟');">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-sm btn-danger" title="حذف">
+                                            <i class="fas fa-trash-alt"></i>
+                                            <span class="action-text">حذف</span>
+                                        </button>
+                                    </form>
+                                {% endif %}
+
+                                <!-- زر التفعيل/الإيقاف -->
+                                <form action="{% url 'services:admin_toggle_user' user.id %}" method="post" style="display:inline;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-sm {% if user.is_active %}btn-danger{% else %}btn-success{% endif %}" title="{% if user.is_active %}إيقاف{% else %}تفعيل{% endif %}">
+                                        {% if user.is_active %} 
+                                            <i class="fas fa-ban"></i>
+                                            <span class="action-text">إيقاف</span>
+                                        {% else %} 
+                                            <i class="fas fa-check"></i>
+                                            <span class="action-text">تفعيل</span>
+                                        {% endif %}
+                                    </button>
+                                </form>
+                            {% else %}
+                                <!-- للمحميين: أزرار معطلة -->
+                                <span class="btn-sm btn-disabled" title="لا يمكن تعديل هذا المستخدم">
+                                    <i class="fas fa-ban"></i>
+                                    <span class="action-text">محمي</span>
+                                </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                        <p>لا يوجد مستخدمين حالياً</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+// وظائف البحث والتصفية
+function filterUsers() {
+    const input = document.getElementById('searchInput');
+    const filter = input.value.toLowerCase();
+    const rows = document.querySelectorAll('#usersTableBody tr.user-row');
+    
+    rows.forEach(row => {
+        const username = row.dataset.username;
+        const email = row.dataset.email;
+        if (username.includes(filter) || email.includes(filter)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+function filterByRole(role, element) {
+    const rows = document.querySelectorAll('#usersTableBody tr.user-row');
+    
+    // تحديث شكل الأزرار المرئية
+    document.querySelectorAll('.visible-filters .filter-badge').forEach(badge => {
+        badge.classList.remove('active');
+    });
+    
+    // تحديث شكل الأزرار في الدروب داون
+    document.querySelectorAll('.filter-dropdown-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // تفعيل العنصر المختار إذا كان في الدروب داون
+    if (element && element.classList.contains('filter-dropdown-item')) {
+        element.classList.add('active');
+    }
+    
+    // تفعيل العنصر المختار إذا كان في الفلاتر المرئية
+    const visibleBadge = document.querySelector(`.visible-filters .filter-badge[onclick*="${role}"]`);
+    if (visibleBadge) {
+        visibleBadge.classList.add('active');
+    }
+    
+    rows.forEach(row => {
+        const userRole = row.dataset.role;
+        if (role === 'all' || userRole === role) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+    
+    // تحديث حقل البحث
+    document.getElementById('searchInput').value = '';
+}
+
+function clearFilters() {
+    const rows = document.querySelectorAll('#usersTableBody tr.user-row');
+    rows.forEach(row => {
+        row.style.display = '';
+    });
+    
+    document.getElementById('searchInput').value = '';
+    
+    document.querySelectorAll('.filter-badge, .filter-dropdown-item').forEach(el => {
+        el.classList.remove('active');
+    });
+    
+    // تفعيل زر "الكل"
+    document.querySelector('.visible-filters .filter-badge[onclick*="all"]').classList.add('active');
+}
+
+// تفعيل فلتر الكل عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('.visible-filters .filter-badge[onclick*="all"]').classList.add('active');
+});
+
+// الدروب داون الجديد
+const dropdownBtn = document.getElementById('filterDropdownBtn');
+const dropdownMenu = document.getElementById('filterDropdownMenu');
+
+if (dropdownBtn) {
+    dropdownBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        this.classList.toggle('active');
+        dropdownMenu.classList.toggle('show');
+    });
+
+    // إغلاق القائمة عند النقر خارجها
+    document.addEventListener('click', function(e) {
+        if (!dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+            dropdownBtn.classList.remove('active');
+            dropdownMenu.classList.remove('show');
+        }
+    });
+
+    // عند اختيار عنصر من القائمة، نغلقها
+    dropdownMenu.querySelectorAll('.filter-dropdown-item').forEach(item => {
+        item.addEventListener('click', function() {
+            dropdownBtn.classList.remove('active');
+            dropdownMenu.classList.remove('show');
+        });
+    });
+}
+</script>
+{% endblock %}

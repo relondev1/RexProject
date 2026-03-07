@@ -1,0 +1,929 @@
+{% extends 'base.html' %}
+
+{% block title %}توفير المودلز - ريكس{% endblock %}
+
+{% block content %}
+    <!-- PAGE HEADER -->
+    <div class="container">
+        <div class="page-header">
+            <h1>
+                <i class="fas fa-camera"></i>
+                توفير الموديلات
+            </h1>
+            <p>اضغط على البطاقة لمعرفة المزيد</p>
+        </div>
+
+        <!-- FILTERS -->
+        <div class="filters">
+            <span class="filter-label"><i class="fas fa-filter"></i> الجنس:</span>
+            <button class="filter-btn active" data-filter="all">الكل</button>
+            <button class="filter-btn" data-filter="male"><i class="fas fa-mars"></i> ذكر</button>
+            <button class="filter-btn" data-filter="female"><i class="fas fa-venus"></i> أنثى</button>
+        </div>
+
+        <!-- VIDEO GRID -->
+        <div class="models-grid" id="modelsGrid"></div>
+
+        <!-- NO RESULTS -->
+        <div class="no-results" id="noResults" style="display: none;">
+            <i class="fas fa-search"></i>
+            <p>لا توجد نتائج مطابقة</p>
+        </div>
+    </div>
+
+    <!-- ===== VIDEO MODAL - تصميم جديد حسب الصورة ===== -->
+    <div class="video-modal" id="videoModal">
+        <!-- Close Button (زر الإغلاق) -->
+        <button class="modal-close-btn" id="closeModalBtn">
+            <i class="fas fa-times"></i>
+        </button>
+        
+        <!-- Navigation Buttons - سهم لفوق وسهم لتحت (يمين الشاشة) -->
+        <div class="nav-buttons-vertical">
+            <button class="modal-nav-btn up" id="prevBtn">
+                <i class="fas fa-chevron-up"></i>
+            </button>
+            <button class="modal-nav-btn down" id="nextBtn">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+        </div>
+
+        <!-- Container مثل تيك توك -->
+        <div class="tiktok-container" id="tiktokContainer">
+            <!-- الفيديو (بدون كونترولز) -->
+            <div class="video-wrapper" id="videoWrapper">
+                <video id="modalVideoPlayer" class="modal-video-player" loop playsinline>
+                    <source src="" type="video/mp4">
+                </video>
+            </div>
+            
+            <!-- المحتوى المتداخل على الفيديو -->
+            <div class="video-overlay-content">
+                <!-- صورة الحساب الدائرية (تحت السهم مباشرة) -->
+                <div class="profile-circle" id="modalProfileCircle">
+                    <img src="" alt="profile" id="profileImage" style="display: none;">
+                    <i class="fas fa-user-circle" id="profileIcon"></i>
+                </div>
+                
+                <!-- اسم الحساب (منفصل ونازل لتحت) -->
+                <div class="username-container">
+                    <span class="username" id="modalAccountName">@username</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== البيانات ====================
+        const modelsData = [
+            {% for model in page_obj.object_list %}
+            {
+                id: {{ model.id }},
+                userId: {% if model.user_id %}{{ model.user_id }}{% else %}null{% endif %},
+                name: "{{ model.name|escapejs }}",
+                gender: "{{ model.gender }}",
+                image: "{{ model.image_url }}",
+                video: "{{ model.video_url }}"
+            },
+            {% endfor %}
+        ];
+
+        // ==================== المتغيرات العامة ====================
+        let currentFilter = 'all';
+        let currentVisibleModels = [];
+        let currentIndex = 0;
+        
+        // عناصر المودال
+        const modal = document.getElementById('videoModal');
+        const video = document.getElementById('modalVideoPlayer');
+        const videoWrapper = document.getElementById('videoWrapper');
+        const accountName = document.getElementById('modalAccountName');
+        const profileCircle = document.getElementById('modalProfileCircle');
+        const profileImage = document.getElementById('profileImage');
+        const profileIcon = document.getElementById('profileIcon');
+        const upBtn = document.getElementById('prevBtn');
+        const downBtn = document.getElementById('nextBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
+        const tiktokContainer = document.getElementById('tiktokContainer');
+
+        // متغيرات السحب العمودي (للموبايل)
+        let touchStartY = 0;
+        let touchEndY = 0;
+        let touchCurrentY = 0;
+        let isSwiping = false;
+        let isAnimating = false;
+
+        // ==================== دالة عرض البطاقات ====================
+        function renderModels(filter = 'all') {
+            const grid = document.getElementById('modelsGrid');
+            const noResults = document.getElementById('noResults');
+            
+            let filtered = modelsData;
+            if (filter !== 'all') {
+                filtered = modelsData.filter(model => model.gender === filter);
+            }
+
+            currentVisibleModels = filtered;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                noResults.style.display = 'block';
+                return;
+            }
+
+            noResults.style.display = 'none';
+            
+            grid.innerHTML = filtered.map((model, index) => {
+                let mediaContent = '';
+                let clickAction = '';
+
+                if (model.video) {
+                    mediaContent = `<video class="model-media" muted loop playsinline poster="${model.image || ''}"></video>`;
+                    clickAction = `onclick="openVideoModal(${index})"`;
+                } else if (model.image) {
+                    mediaContent = `<img src="${model.image}" class="model-media" alt="${model.name}" loading="lazy">`;
+                } else {
+                    mediaContent = `<div class="model-media" style="background:linear-gradient(135deg,#333,#000); display:flex; align-items:center; justify-content:center; font-size:2rem;">📷</div>`;
+                }
+
+                const link = model.userId 
+                    ? `/provider/${model.userId}/` 
+                    : `/request-service/?service=models&id=${model.id}`;
+
+                if (!model.video) {
+                    clickAction = `onclick="window.location.href='${link}'"`;
+                }
+
+                return `
+                    <div class="model-card" ${clickAction} data-video-src="${model.video || ''}" data-user-id="${model.userId || ''}" data-model-name="${model.name}" data-model-image="${model.image || ''}">
+                        ${mediaContent}
+                        <div class="overlay-gradient"></div>
+                        <div class="video-badge">
+                            <i class="fas fa-play-circle"></i> 
+                            ${model.video ? 'فيديو' : 'صورة'}
+                        </div>
+                        <div class="play-icon">
+                            <i class="fas fa-play-circle"></i>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            // تشغيل الفيديوهات في البطاقات
+            document.querySelectorAll('.model-card').forEach(card => {
+                const videoSrc = card.dataset.videoSrc;
+                if (videoSrc) {
+                    const video = card.querySelector('video');
+                    if (video) {
+                        const observer = new IntersectionObserver((entries) => {
+                            entries.forEach(entry => {
+                                if (entry.isIntersecting) {
+                                    if (!video.src) {
+                                        video.src = videoSrc;
+                                        video.load();
+                                    }
+                                    video.play().catch(e => {});
+                                } else {
+                                    if (!video.paused) {
+                                        video.pause();
+                                    }
+                                }
+                            });
+                        }, { threshold: 0.3 });
+
+                        observer.observe(video);
+                    }
+                }
+            });
+        }
+
+        // ==================== دوال المودال ====================
+        
+        // فتح المودال
+        window.openVideoModal = function(index) {
+            currentIndex = index;
+            const model = currentVisibleModels[index];
+            
+            if (!model || !model.video) return;
+
+            // تحديث المحتوى
+            video.src = model.video;
+            accountName.textContent = '@' + model.name.replace(/\s+/g, '_').toLowerCase();
+            
+            // تحديث صورة الحساب
+            if (model.image) {
+                profileImage.src = model.image;
+                profileImage.style.display = 'block';
+                profileIcon.style.display = 'none';
+            } else {
+                profileImage.style.display = 'none';
+                profileIcon.style.display = 'flex';
+            }
+            
+            const profileUrl = model.userId 
+                ? `/provider/${model.userId}/` 
+                : `/request-service/?service=models&id=${model.id}`;
+            
+            // ربط الضغط على الصورة الدائرية بفتح الرابط
+            profileCircle.onclick = (e) => {
+                e.stopPropagation();
+                window.open(profileUrl, '_blank');
+            };
+
+            // تشغيل الفيديو
+            video.play().catch(e => console.log('تأخير تشغيل الفيديو'));
+            
+            // عرض المودال
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            
+            // تحديث حالة الأزرار
+            updateButtons();
+            
+            // إعادة تعيين transform
+            videoWrapper.style.transform = 'translateY(0)';
+            videoWrapper.style.opacity = '1';
+            videoWrapper.style.transition = 'none';
+        };
+
+        // إغلاق المودال
+        function closeModal() {
+            video.pause();
+            video.currentTime = 0;
+            video.src = "";
+            
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        // الذهاب إلى الفيديو التالي (اللي تحت)
+        function nextVideo() {
+            if (currentIndex < currentVisibleModels.length - 1) {
+                // أنيميشن الخروج - يطلع لفوق
+                videoWrapper.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                videoWrapper.style.transform = 'translateY(-100%)';
+                videoWrapper.style.opacity = '0';
+                
+                setTimeout(() => {
+                    openVideoModal(currentIndex + 1);
+                }, 300);
+            }
+        }
+
+        // الذهاب إلى الفيديو السابق (اللي فوق)
+        function prevVideo() {
+            if (currentIndex > 0) {
+                // أنيميشن الخروج - ينزل لتحت
+                videoWrapper.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                videoWrapper.style.transform = 'translateY(100%)';
+                videoWrapper.style.opacity = '0';
+                
+                setTimeout(() => {
+                    openVideoModal(currentIndex - 1);
+                }, 300);
+            }
+        }
+
+        // تحديث حالة الأزرار
+        function updateButtons() {
+            if (currentVisibleModels.length <= 1) {
+                upBtn.style.display = 'none';
+                downBtn.style.display = 'none';
+                return;
+            }
+
+            // للبيسي فقط نعرض الأزرار
+            if (window.innerWidth > 768) {
+                upBtn.style.display = 'flex';
+                downBtn.style.display = 'flex';
+            }
+
+            if (currentIndex === 0) {
+                upBtn.classList.add('disabled');
+            } else {
+                upBtn.classList.remove('disabled');
+            }
+
+            if (currentIndex === currentVisibleModels.length - 1) {
+                downBtn.classList.add('disabled');
+            } else {
+                downBtn.classList.remove('disabled');
+            }
+        }
+
+        // ==================== أحداث السحب العمودي (للموبايل) ====================
+        modal.addEventListener('touchstart', (e) => {
+            if (isAnimating) return;
+            
+            touchStartY = e.changedTouches[0].screenY;
+            touchCurrentY = touchStartY;
+            isSwiping = true;
+            
+            // إلغاء أي ترانزشن مؤقتاً
+            videoWrapper.style.transition = 'none';
+        }, { passive: true });
+
+        modal.addEventListener('touchmove', (e) => {
+            if (!isSwiping || isAnimating) return;
+            
+            touchCurrentY = e.changedTouches[0].screenY;
+            const diffY = touchCurrentY - touchStartY;
+            
+            // تطبيق transform بناءً على حركة الإصبع
+            videoWrapper.style.transform = `translateY(${diffY}px)`;
+            videoWrapper.style.opacity = 1 - Math.min(Math.abs(diffY) / 500, 0.5);
+            
+            // منع التمرير الطبيعي للصفحة
+            e.preventDefault();
+        }, { passive: false });
+
+        modal.addEventListener('touchend', (e) => {
+            if (!isSwiping || isAnimating) return;
+            
+            touchEndY = e.changedTouches[0].screenY;
+            
+            if (!modal.classList.contains('active')) {
+                isSwiping = false;
+                return;
+            }
+
+            const swipeThreshold = 80;
+            const diffY = touchEndY - touchStartY;
+
+            if (Math.abs(diffY) > swipeThreshold) {
+                isAnimating = true;
+                
+                if (diffY > 0) {
+                    // سحب لأسفل ← الفيديو السابق (اللي فوق)
+                    videoWrapper.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                    videoWrapper.style.transform = 'translateY(100%)';
+                    videoWrapper.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        if (currentIndex > 0) {
+                            openVideoModal(currentIndex - 1);
+                        } else {
+                            // إذا كان أول فيديو، نرجع لوضعه الطبيعي
+                            videoWrapper.style.transition = 'transform 0.2s ease';
+                            videoWrapper.style.transform = 'translateY(0)';
+                            videoWrapper.style.opacity = '1';
+                        }
+                        isAnimating = false;
+                    }, 300);
+                } else {
+                    // سحب لأعلى ← الفيديو التالي (اللي تحت)
+                    videoWrapper.style.transition = 'transform 0.3s ease, opacity 0.3s ease';
+                    videoWrapper.style.transform = 'translateY(-100%)';
+                    videoWrapper.style.opacity = '0';
+                    
+                    setTimeout(() => {
+                        if (currentIndex < currentVisibleModels.length - 1) {
+                            openVideoModal(currentIndex + 1);
+                        } else {
+                            // إذا كان آخر فيديو، نرجع لوضعه الطبيعي
+                            videoWrapper.style.transition = 'transform 0.2s ease';
+                            videoWrapper.style.transform = 'translateY(0)';
+                            videoWrapper.style.opacity = '1';
+                        }
+                        isAnimating = false;
+                    }, 300);
+                }
+            } else {
+                // إذا ما وصلت المسافة للحد المطلوب، نرجع الفيديو لمكانه
+                videoWrapper.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+                videoWrapper.style.transform = 'translateY(0)';
+                videoWrapper.style.opacity = '1';
+            }
+            
+            isSwiping = false;
+        }, { passive: true });
+
+        // ==================== أحداث الكيبورد ====================
+        document.addEventListener('keydown', (e) => {
+            if (!modal.classList.contains('active')) return;
+
+            if (e.key === 'Escape') {
+                closeModal();
+            }
+            if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                prevVideo(); // سهم فوق = الفيديو السابق (اللي فوق)
+            }
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                nextVideo(); // سهم تحت = الفيديو التالي (اللي تحت)
+            }
+        });
+
+        // ==================== ربط الأزرار ====================
+        closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeModal();
+        });
+
+        upBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            prevVideo(); // سهم فوق = الفيديو السابق
+        });
+
+        downBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            nextVideo(); // سهم تحت = الفيديو التالي
+        });
+
+        // إغلاق المودال عند الضغط على الخلفية
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+
+        // منع إغلاق المودال عند الضغط على الفيديو
+        video.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        // عند تغيير حجم الشاشة، نخفي أزرار الأسهم في الجوال
+        window.addEventListener('resize', function() {
+            if (window.innerWidth <= 768) {
+                upBtn.style.display = 'none';
+                downBtn.style.display = 'none';
+            } else if (currentVisibleModels.length > 1) {
+                upBtn.style.display = 'flex';
+                downBtn.style.display = 'flex';
+            }
+        });
+
+        // ==================== الفلاتر ====================
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                renderModels(this.dataset.filter);
+            });
+        });
+
+        // ==================== التحميل ====================
+        renderModels();
+    </script>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* ===== PAGE HEADER ===== */
+    .page-header { 
+        margin-top: 6rem; 
+        padding: 1.5rem 0; 
+        border-bottom: 2px solid rgba(255,189,89,0.2);
+        text-align: center;
+    }
+
+    .page-header h1 { 
+        color: var(--primary); 
+        margin-bottom: 0.3rem;
+        font-size: 2.5rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .page-header h1 i {
+        font-size: 2rem;
+    }
+
+    .page-header p { 
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    /* ===== FILTERS ===== */
+    .filters { 
+        background: linear-gradient(145deg, #2a2a2a, #222);
+        padding: 1.5rem; 
+        border-radius: 40px; 
+        margin: 2rem 0; 
+        display: flex; 
+        gap: 1rem; 
+        flex-wrap: wrap; 
+        align-items: center;
+        border: 1px solid rgba(255,189,89,0.2);
+        box-shadow: var(--shadow);
+    }
+
+    .filter-label { 
+        color: #fff; 
+        font-weight: 600; 
+        margin-left: 1rem;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .filter-label i {
+        color: var(--primary);
+    }
+
+    .filter-btn { 
+        padding: 0.6rem 1.8rem; 
+        border: 2px solid rgba(255,189,89,0.3); 
+        background-color: transparent; 
+        color: #fff; 
+        border-radius: 30px; 
+        cursor: pointer; 
+        transition: all 0.3s; 
+        font-family: 'Cairo'; 
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .filter-btn:hover, 
+    .filter-btn.active { 
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #000; 
+        border-color: transparent;
+        transform: translateY(-2px);
+    }
+
+    /* ===== VIDEO GRID ===== */
+    .models-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); 
+        gap: 1.5rem; 
+        margin: 2.5rem 0; 
+    }
+
+    .model-card {
+        position: relative;
+        border-radius: 20px;
+        overflow: hidden;
+        aspect-ratio: 9/16;
+        background: linear-gradient(135deg, #2a2a2a, #1a1a1a);
+        cursor: pointer;
+        box-shadow: var(--shadow);
+        transition: transform 0.3s;
+        border: 2px solid transparent;
+        animation: scaleIn 0.4s ease-out backwards;
+        will-change: transform;
+    }
+
+    .model-card:nth-child(1) { animation-delay: 0.05s; }
+    .model-card:nth-child(2) { animation-delay: 0.1s; }
+    .model-card:nth-child(3) { animation-delay: 0.15s; }
+    .model-card:nth-child(4) { animation-delay: 0.2s; }
+    .model-card:nth-child(5) { animation-delay: 0.25s; }
+    .model-card:nth-child(6) { animation-delay: 0.3s; }
+
+    .model-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--primary);
+    }
+
+    .model-media {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.4s;
+        will-change: transform;
+    }
+
+    .model-card:hover .model-media {
+        transform: scale(1.08);
+    }
+
+    .overlay-gradient {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 40%;
+        background: linear-gradient(to top, 
+            rgba(0,0,0,0.9) 0%,
+            rgba(0,0,0,0.4) 50%,
+            transparent 100%);
+        pointer-events: none;
+        opacity: 0.8;
+        transition: opacity 0.3s;
+    }
+
+    .video-badge {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(255,189,89,0.9);
+        color: #000;
+        padding: 0.3rem 0.8rem;
+        border-radius: 20px 5px 20px 5px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        z-index: 10;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .model-card:hover .video-badge {
+        opacity: 1;
+    }
+
+    .play-icon {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: #fff;
+        font-size: 2.5rem;
+        opacity: 0;
+        transition: opacity 0.3s;
+        z-index: 10;
+        text-shadow: 0 0 10px rgba(0,0,0,0.5);
+    }
+
+    .model-card:hover .play-icon {
+        opacity: 1;
+    }
+
+    .no-results {
+        text-align: center;
+        padding: 4rem 2rem;
+        background: linear-gradient(145deg, #2a2a2a, #222);
+        border-radius: 25px;
+        border: 2px dashed rgba(255,189,89,0.3);
+        margin: 2.5rem 0;
+    }
+
+    .no-results i {
+        font-size: 3.5rem;
+        color: var(--primary);
+        margin-bottom: 1rem;
+        opacity: 0.7;
+    }
+
+    .no-results p {
+        color: var(--text-muted);
+        font-size: 1.2rem;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes scaleIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    /* ===== ستايل المودال - تصميم جديد حسب الصورة ===== */
+    .video-modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: #000;
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+        animation: fadeIn 0.3s ease;
+    }
+
+    .video-modal.active { display: flex; }
+
+    /* حاوية التيك توك */
+    .tiktok-container {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #000;
+        overflow: hidden;
+    }
+
+    .video-wrapper {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        will-change: transform, opacity;
+    }
+
+    .modal-video-player {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        background: #000;
+    }
+    
+    /* إخفاء عناصر التحكم في الفيديو */
+    .modal-video-player::-webkit-media-controls {
+        display: none !important;
+    }
+    
+    .modal-video-player::-webkit-media-controls-enclosure {
+        display: none !important;
+    }
+    
+    .modal-video-player::-webkit-media-controls-panel {
+        display: none !important;
+    }
+    
+    .modal-video-player::--webkit-media-controls-play-button {
+        display: none !important;
+    }
+    
+    .modal-video-player::-webkit-media-controls-start-playback-button {
+        display: none !important;
+    }
+
+    /* المحتوى المتداخل على الفيديو */
+    .video-overlay-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        pointer-events: none;
+        z-index: 10;
+    }
+
+    /* ===== أزرار التنقل العمودية (فوق بعض - يمين الشاشة) ===== */
+    .nav-buttons-vertical {
+        position: absolute;
+        top: 50%;
+        right: 20px;
+        transform: translateY(-50%);
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+        z-index: 100;
+        pointer-events: auto;
+    }
+
+    .modal-nav-btn {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border: 2px solid rgba(255,189,89,0.3);
+        color: var(--primary);
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .modal-nav-btn:hover:not(.disabled) {
+        background: var(--primary);
+        color: #000;
+        border-color: var(--primary);
+        transform: scale(1.1);
+    }
+
+    .modal-nav-btn.disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+
+    /* ===== صورة الحساب الدائرية (تحت السهم مباشرة) ===== */
+.profile-circle {
+    position: absolute;
+    top: calc(60% + 95px); /* تحت منتصف الشاشة بمسافة أكبر (45px + 50px = 95px) */
+    right: 20px;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 4px solid var(--primary);
+    cursor: pointer;
+    background: #2d2d2d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 8px 20px rgba(255,189,89,0.5);
+    pointer-events: auto;
+    z-index: 20;
+    transform: translateY(-50%);
+}
+
+    .profile-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-circle i {
+        font-size: 3rem;
+        color: #fff;
+    }
+
+    /* ===== اسم الحساب (تحت الدائرة بمسافة) ===== */
+.username-container {
+    position: absolute;
+    top: calc(60% + 95px + 80px); /* تحت الدائرة بمسافة */
+    right: 20px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    padding: 8px 16px;
+    border-radius: 40px;
+    border: 1px solid rgba(255,189,89,0.3);
+    pointer-events: auto;
+    z-index: 20;
+    transform: translateY(-50%);
+}
+
+    .username {
+        color: #fff;
+        font-weight: 600;
+        font-size: 1rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 150px;
+    }
+
+    /* ===== زر الإغلاق ===== */
+    .modal-close-btn {
+        position: absolute;
+        top: 20px;
+        left: 20px;
+        color: #fff;
+        font-size: 1.3rem;
+        cursor: pointer;
+        z-index: 100;
+        width: 40px;
+        height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border-radius: 50%;
+        border: 2px solid rgba(255,189,89,0.3);
+        transition: all 0.3s ease;
+        pointer-events: auto;
+    }
+
+    .modal-close-btn:hover { 
+        color: var(--primary); 
+        transform: rotate(90deg);
+        border-color: var(--primary);
+    }
+
+    /* ===== Responsive للجوال ===== */
+@media (max-width: 768px) {
+    .nav-buttons-vertical {
+        display: none;
+    }
+    
+    .profile-circle {
+        top: calc(50% + 85px); /* 40px + 45px = 85px للجوال */
+        right: 15px;
+        width: 60px;
+        height: 60px;
+    }
+    
+    .profile-circle i {
+        font-size: 2.5rem;
+    }
+    
+    .username-container {
+        top: calc(50% + 85px + 70px);
+        right: 15px;
+        padding: 6px 12px;
+    }
+    
+    .username {
+        font-size: 0.9rem;
+        max-width: 130px;
+    }
+}
+        
+        .modal-close-btn {
+            top: 10px;
+            left: 10px;
+            width: 35px;
+            height: 35px;
+            font-size: 1.1rem;
+        }
+    }
+</style>
+{% endblock %}

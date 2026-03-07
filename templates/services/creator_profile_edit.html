@@ -1,0 +1,789 @@
+{% extends 'base.html' %}
+
+{% block title %}المعلومات الشخصية - صناع المحتوى | ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* استخدام بادئة prof- لجميع الكلاسات */
+    
+    /* متغيرات محلية للصفحة فقط */
+    .prof-page-wrapper {
+        --prof-bg-light: #252525;
+        --prof-card-bg: #2a2a2a;
+        --prof-border: #333333;
+        --prof-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        --prof-shadow-glow: 0 0 20px rgba(255, 189, 89, 0.3);
+    }
+
+    /* أنميشنات */
+    @keyframes profFadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes profFadeInUp {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes profSlideInRight {
+        from { opacity: 0; transform: translateX(50px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes profScaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes profFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes profPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes profRotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+
+    .prof-animate-up { animation: profFadeInUp 0.8s ease forwards; }
+    .prof-animate-scale { animation: profScaleIn 0.6s ease forwards; }
+    .prof-delay-1 { animation-delay: 0.1s; }
+    .prof-delay-2 { animation-delay: 0.2s; }
+
+    .prof-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 0 1.5rem;
+    }
+
+    /* ===== الهيدر ===== */
+    .prof-header-section {
+        margin-top: 6rem;
+        padding: 2.5rem 0;
+        text-align: center;
+        background: linear-gradient(135deg, #252525, #2a2a2a);
+        border-radius: 30px;
+        margin-bottom: 2rem;
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        animation: profFadeInUp 0.8s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .prof-header-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 189, 89, 0.05) 0%, transparent 70%);
+        animation: profRotate 20s linear infinite;
+    }
+
+    .prof-header-section::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 100px;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    }
+
+    .prof-header-section h1 {
+        color: var(--primary);
+        font-size: 2.8rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+        position: relative;
+        z-index: 2;
+        text-shadow: 0 0 20px rgba(255, 189, 89, 0.3);
+    }
+
+    .prof-header-section h1 i {
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, var(--primary), #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: profFloat 3s ease-in-out infinite;
+    }
+
+    .prof-header-section p {
+        color: var(--text-muted);
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 2;
+        display: inline-block;
+        padding: 0.5rem 2rem;
+        background: rgba(255, 189, 89, 0.05);
+        border-radius: 50px;
+        border: 1px solid rgba(255, 189, 89, 0.2);
+    }
+
+    /* ===== TABS ===== */
+    .prof-tabs-nav {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin: 2rem 0 3rem;
+        flex-wrap: wrap;
+        animation: profFadeInUp 0.8s ease 0.1s both;
+    }
+
+    .prof-tab-item {
+        padding: 1rem 2.5rem;
+        background: linear-gradient(145deg, #2a2a2a, #222);
+        border: 2px solid #333333;
+        color: var(--text-muted);
+        border-radius: 50px;
+        font-size: 1.1rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        font-family: 'Cairo';
+        text-decoration: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .prof-tab-item::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+        z-index: 0;
+    }
+
+    .prof-tab-item:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .prof-tab-item i {
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .prof-tab-item span {
+        position: relative;
+        z-index: 1;
+    }
+
+    .prof-tab-item:hover,
+    .prof-tab-item.active {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #000;
+        border-color: transparent;
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4);
+    }
+
+    /* ===== بطاقة الملف الشخصي ===== */
+    .prof-card-main {
+        background: linear-gradient(145deg, #2a2a2a, #222);
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        border-radius: 30px;
+        padding: 2.5rem;
+        margin: 2rem auto;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        animation: profScaleIn 0.6s ease 0.2s both;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .prof-card-main::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: profPulse 2s infinite;
+    }
+
+    .prof-avatar-section {
+        text-align: center;
+        margin-bottom: 2.5rem;
+        animation: profFadeIn 0.5s ease 0.3s both;
+    }
+
+    .prof-avatar-circle {
+        width: 140px;
+        height: 140px;
+        border-radius: 50%;
+        border: 4px solid var(--primary);
+        margin: 0 auto 1.5rem;
+        overflow: hidden;
+        box-shadow: 0 0 0 4px rgba(255, 189, 89, 0.2);
+        position: relative;
+        transition: all 0.3s;
+    }
+
+    .prof-avatar-circle:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 30px rgba(255, 189, 89, 0.4);
+    }
+
+    .prof-avatar-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s;
+    }
+
+    .prof-avatar-circle:hover img {
+        transform: scale(1.1);
+    }
+
+    .prof-name-large {
+        color: var(--primary);
+        font-size: 2.2rem;
+        margin-bottom: 0.5rem;
+        font-weight: 800;
+    }
+
+    .prof-platform-badge {
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        font-size: 1.1rem;
+    }
+
+    .prof-platform-badge i {
+        color: var(--primary);
+        font-size: 1.2rem;
+    }
+
+    /* ===== نموذج المعلومات ===== */
+    .prof-form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    @media (max-width: 768px) {
+        .prof-form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .prof-field-group {
+        margin-bottom: 1.2rem;
+        animation: profFadeIn 0.5s ease backwards;
+    }
+
+    .prof-field-group:nth-child(1) { animation-delay: 0.1s; }
+    .prof-field-group:nth-child(2) { animation-delay: 0.15s; }
+    .prof-field-group:nth-child(3) { animation-delay: 0.2s; }
+    .prof-field-group:nth-child(4) { animation-delay: 0.25s; }
+    .prof-field-group:nth-child(5) { animation-delay: 0.3s; }
+    .prof-field-group:nth-child(6) { animation-delay: 0.35s; }
+
+    .prof-field-group label {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.6rem;
+        color: var(--text-muted);
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .prof-field-group label i {
+        color: var(--primary);
+        font-size: 1rem;
+    }
+
+    .prof-input-with-icon {
+        position: relative;
+    }
+
+    .prof-icon-inside {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1.1rem;
+        transition: color 0.3s;
+        z-index: 1;
+    }
+
+    .prof-field-group input,
+    .prof-field-group select,
+    .prof-field-group textarea {
+        width: 100%;
+        padding: 0.9rem 2.5rem;
+        background: rgba(0, 0, 0, 0.3);
+        border: 2px solid #333333;
+        border-radius: 15px;
+        color: var(--text);
+        font-family: 'Cairo', sans-serif;
+        font-size: 1rem;
+        transition: all 0.3s;
+    }
+
+    .prof-field-group input:focus,
+    .prof-field-group select:focus,
+    .prof-field-group textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(255, 189, 89, 0.2);
+        background: rgba(0, 0, 0, 0.5);
+    }
+
+    .prof-field-group input:focus + .prof-icon-inside {
+        color: var(--primary);
+    }
+
+    .prof-field-group textarea {
+        resize: vertical;
+        min-height: 100px;
+        padding-top: 1rem;
+    }
+
+    .prof-field-group input[type="file"] {
+        padding: 0.7rem 1rem;
+        background: rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+    }
+
+    .prof-field-group input[type="file"]::-webkit-file-upload-button {
+        background: var(--primary);
+        color: #000;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-family: 'Cairo';
+        font-weight: 600;
+        margin-left: 1rem;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+
+    .prof-field-group input[type="file"]::-webkit-file-upload-button:hover {
+        background: #fff;
+        transform: scale(1.05);
+    }
+
+    /* ===== قسم الفيديو ===== */
+    .prof-video-container {
+        margin: 2rem 0;
+        padding: 1.5rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 20px;
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        animation: profFadeIn 0.5s ease 0.4s both;
+    }
+
+    .prof-video-preview {
+        margin-top: 1.5rem;
+        border-radius: 15px;
+        overflow: hidden;
+        background: #000;
+        border: 2px solid var(--primary);
+        box-shadow: 0 0 20px rgba(255, 189, 89, 0.3);
+    }
+
+    .prof-video-preview video {
+        width: 100%;
+        display: block;
+    }
+
+    .prof-divider {
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        margin: 2rem 0;
+    }
+
+    /* ===== أزرار ===== */
+    .prof-action-buttons {
+        display: flex;
+        gap: 1rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+        animation: profFadeIn 0.5s ease 0.5s both;
+    }
+
+    .prof-custom-btn {
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        font-family: 'Cairo', sans-serif;
+        font-weight: 700;
+        transition: all 0.4s;
+        font-size: 1.1rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+        flex: 1;
+        text-decoration: none;
+    }
+
+    .prof-custom-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .prof-custom-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .prof-btn-save {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #000;
+    }
+
+    .prof-btn-save:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4);
+    }
+
+    .prof-btn-cancel {
+        background: #2a2a2a;
+        border: 2px solid #333333;
+        color: var(--text);
+    }
+
+    .prof-btn-cancel:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-3px);
+    }
+
+    /* ===== زر العودة للرئيسية ===== */
+    .prof-back-home {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .prof-back-home a {
+        color: var(--text-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border: 1px solid var(--border);
+        border-radius: 30px;
+        transition: all 0.3s;
+    }
+
+    .prof-back-home a:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateX(-5px);
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .prof-header-section {
+            margin-top: 5rem;
+            padding: 1.5rem;
+        }
+
+        .prof-header-section h1 {
+            font-size: 2rem;
+        }
+
+        .prof-header-section p {
+            font-size: 1rem;
+        }
+
+        .prof-tab-item {
+            padding: 0.8rem 1.5rem;
+            font-size: 0.9rem;
+        }
+
+        .prof-card-main {
+            padding: 1.5rem;
+        }
+
+        .prof-name-large {
+            font-size: 1.8rem;
+        }
+
+        .prof-action-buttons {
+            flex-direction: column;
+        }
+
+        .prof-custom-btn {
+            width: 100%;
+        }
+    }
+
+    /* ===== سكرول مخصص ===== */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="prof-container">
+    <!-- ===== الهيدر ===== -->
+    <div class="prof-header-section">
+        <h1>
+            <i class="fas fa-user-edit"></i>
+            المعلومات الشخصية
+        </h1>
+        <p><i class="fas fa-camera"></i> {{ request.user.username }} | صانع محتوى</p>
+    </div>
+
+<div class="prof-tabs-nav">
+    <a href="{% url 'services:creator_dashboard' %}" class="prof-tab-item">الرئيسية</a>
+    <a href="{% url 'services:creator_profile_edit' %}" class="prof-tab-item active">المعلومات الشخصية</a>
+    <a href="{% url 'services:creator_portfolio' %}" class="prof-tab-item">معرض الأعمال</a>
+    
+    {% if is_admin_view %}
+    <a href="{% url 'services:admin_close_panel' %}" class="prof-tab-item" style="background: #d35400; color: #fff; border: none;">
+        <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+    </a>
+    {% endif %}
+</div>
+
+    <!-- ===== بطاقة الملف الشخصي ===== -->
+    <div class="prof-card-main">
+        <div class="prof-avatar-section">
+            <div class="prof-avatar-circle">
+                <img src="{{ instance.image_url|default:'https://ui-avatars.com/api/?name=' }}{{ request.user.username }}&background=FFBD59&color=000&size=140" alt="{{ request.user.username }}">
+            </div>
+            <h2 class="prof-name-large">{{ instance.name|default:request.user.username }}</h2>
+            <div class="prof-platform-badge">
+                <i class="fas fa-star"></i>
+                {% if instance.platform %}
+                    {% if instance.platform == 'snapchat' %}سناب شات
+                    {% elif instance.platform == 'tiktok' %}تيك توك
+                    {% elif instance.platform == 'instagram' %}انستقرام
+                    {% elif instance.platform == 'youtube' %}يوتيوب
+                    {% elif instance.platform == 'twitter' %}تويتر
+                    {% else %}{{ instance.platform }}{% endif %}
+                {% else %}
+                    منصة غير محددة
+                {% endif %}
+            </div>
+        </div>
+
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="prof-form-grid">
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-user"></i>
+                        الاسم الكامل
+                    </label>
+                    <div class="prof-input-with-icon">
+                        <i class="fas fa-user prof-icon-inside"></i>
+                        <input type="text" name="name" value="{{ instance.name|default:'' }}" placeholder="أدخل اسمك الكامل" required>
+                    </div>
+                </div>
+
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-globe"></i>
+                        المنصة الرئيسية
+                    </label>
+                    <div class="prof-input-with-icon">
+                        <i class="fas fa-globe prof-icon-inside"></i>
+                        <select name="platform">
+                            <option value="" {% if not instance.platform %}selected{% endif %}>اختر المنصة</option>
+                            <option value="snapchat" {% if instance.platform == 'snapchat' %}selected{% endif %}>سناب شات</option>
+                            <option value="tiktok" {% if instance.platform == 'tiktok' %}selected{% endif %}>تيك توك</option>
+                            <option value="instagram" {% if instance.platform == 'instagram' %}selected{% endif %}>انستقرام</option>
+                            <option value="youtube" {% if instance.platform == 'youtube' %}selected{% endif %}>يوتيوب</option>
+                            <option value="twitter" {% if instance.platform == 'twitter' %}selected{% endif %}>تويتر</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-birthday-cake"></i>
+                        العمر
+                    </label>
+                    <div class="prof-input-with-icon">
+                        <i class="fas fa-birthday-cake prof-icon-inside"></i>
+                        <input type="number" name="age" value="{{ instance.age|default:'' }}" placeholder="العمر">
+                    </div>
+                </div>
+
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-venus-mars"></i>
+                        الجنس
+                    </label>
+                    <div class="prof-input-with-icon">
+                        <i class="fas fa-venus-mars prof-icon-inside"></i>
+                        <select name="gender">
+                            <option value="" {% if not instance.gender %}selected{% endif %}>اختر الجنس</option>
+                            <option value="male" {% if instance.gender == 'male' %}selected{% endif %}>ذكر</option>
+                            <option value="female" {% if instance.gender == 'female' %}selected{% endif %}>أنثى</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-users"></i>
+                        عدد المتابعين
+                    </label>
+                    <div class="prof-input-with-icon">
+                        <i class="fas fa-users prof-icon-inside"></i>
+                        <input type="text" name="followers" value="{{ instance.followers|default:'' }}" placeholder="مثال: 1M">
+                    </div>
+                </div>
+
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-tag"></i>
+                        التخصص
+                    </label>
+                    <div class="prof-input-with-icon">
+                        <i class="fas fa-tag prof-icon-inside"></i>
+                        <input type="text" name="specialty" value="{{ instance.specialty|default:'' }}" placeholder="مثال: تقنية، طبخ">
+                    </div>
+                </div>
+            </div>
+
+            <div class="prof-field-group">
+                <label>
+                    <i class="fas fa-link"></i>
+                    رابط الصورة الشخصية
+                </label>
+                <div class="prof-input-with-icon">
+                    <i class="fas fa-link prof-icon-inside"></i>
+                    <input type="url" name="image_url" value="{{ instance.image_url|default:'' }}" placeholder="https://example.com/image.jpg">
+                </div>
+            </div>
+
+            <div class="prof-field-group">
+                <label>
+                    <i class="fas fa-star"></i>
+                    الخبرات
+                </label>
+                <div class="prof-input-with-icon">
+                    <i class="fas fa-star prof-icon-inside"></i>
+                    <textarea name="experience" placeholder="اكتب خبراتك السابقة وإنجازاتك...">{{ instance.experience|default:'' }}</textarea>
+                </div>
+            </div>
+
+            <div class="prof-divider"></div>
+
+            <!-- ===== قسم الفيديو ===== -->
+            <div class="prof-video-container">
+                <div class="prof-field-group">
+                    <label>
+                        <i class="fas fa-video"></i>
+                        فيديو تعريفي (اختياري)
+                    </label>
+                    <input type="file" name="video_file" accept="video/*">
+                </div>
+                
+                {% if instance.video_url %}
+                <div class="prof-video-preview">
+                    <video width="100%" controls>
+                        <source src="{{ instance.video_url }}" type="video/mp4">
+                    </video>
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="prof-action-buttons">
+                <button type="submit" class="prof-custom-btn prof-btn-save">
+                    <i class="fas fa-save"></i>
+                    حفظ التغييرات
+                </button>
+                <a href="{% url 'services:creator_dashboard' %}" class="prof-custom-btn prof-btn-cancel">
+                    <i class="fas fa-times"></i>
+                    إلغاء
+                </a>
+            </div>
+        </form>
+
+        <!-- زر العودة للرئيسية -->
+        <div class="prof-back-home">
+            <a href="{% url 'services:creator_dashboard' %}">
+                <i class="fas fa-arrow-right"></i>
+                العودة للوحة التحكم
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        // ===== تأثيرات ظهور العناصر عند التمرير =====
+        const profObserver = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'scale(1)';
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.prof-field-group, .prof-video-container, .prof-action-buttons').forEach(el => {
+            el.style.opacity = '0';
+            el.style.transform = 'scale(0.9)';
+            el.style.transition = 'all 0.5s ease';
+            profObserver.observe(el);
+        });
+    })();
+</script>
+{% endblock %}

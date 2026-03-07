@@ -1,0 +1,646 @@
+<!-- ======================================== -->
+<!-- الصفحة الثالثة: فويس برتوفوليو (voice_portfolio.html) -->
+<!-- ======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}معرض الأعمال الصوتية - ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === أنميشنات === */
+    @keyframes vFadeInUp {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes vFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes vPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes vScaleIn {
+        from { opacity: 0; transform: scale(0.9); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .v-container { 
+        max-width: 1100px; 
+        margin: 0 auto; 
+        padding: 2rem; 
+        padding-top: 6rem; 
+    }
+
+    /* === Tabs محسنة (مطابقة للداش بورد) === */
+    .v-tabs { 
+        display: flex; 
+        gap: 1rem; 
+        margin-bottom: 3rem; 
+        justify-content: center; 
+        flex-wrap: wrap; 
+        animation: vFadeInUp 0.8s ease 0.1s both;
+    }
+
+    .v-tab-btn {
+        padding: 1rem 2.5rem; 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 2px solid var(--border);
+        color: var(--text-muted); 
+        border-radius: 50px; 
+        text-decoration: none; 
+        font-weight: 700; 
+        font-size: 1.1rem;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .v-tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .v-tab-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .v-tab-btn i {
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .v-tab-btn span {
+        position: relative;
+        z-index: 2;
+    }
+
+    .v-tab-btn.active { 
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000; 
+        border-color: transparent; 
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.4);
+    }
+
+    .v-tab-btn:hover:not(.active) {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    /* ===== كارد رفع الأعمال - تم إعادة تنظيم ===== */
+    .v-upload-section {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 30px;
+        padding: 2rem;
+        margin-bottom: 2.5rem;
+        border: 1px solid rgba(255,189,89,0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        position: relative;
+        overflow: hidden;
+        animation: vFadeInUp 0.8s ease 0.2s both;
+    }
+
+    .v-upload-section::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: vPulse 2s infinite;
+    }
+
+    .v-upload-header {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255,189,89,0.1);
+        padding-bottom: 1rem;
+    }
+
+    .v-upload-header i {
+        font-size: 2rem;
+        color: var(--primary);
+        background: rgba(255,189,89,0.1);
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 15px;
+        border: 1px solid rgba(255,189,89,0.3);
+    }
+
+    .v-upload-header h2 {
+        color: var(--primary);
+        font-size: 1.8rem;
+        font-weight: 700;
+        margin: 0;
+    }
+
+    /* ===== منطقة رفع الملفات المحسنة ===== */
+    .v-upload-form {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    .v-upload-area-wrapper {
+        width: 100%;
+    }
+
+    .v-upload-area {
+        border: 3px dashed rgba(255,189,89,0.3);
+        padding: 2.5rem;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.4s;
+        text-align: center;
+        background: rgba(0,0,0,0.2);
+        display: block;
+    }
+
+    .v-upload-area:hover {
+        border-color: var(--primary);
+        background: rgba(255,189,89,0.05);
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.2);
+    }
+
+    .v-upload-icon {
+        font-size: 4rem;
+        color: var(--primary);
+        margin-bottom: 1rem;
+        animation: vFloat 3s ease-in-out infinite;
+        display: block;
+    }
+
+    .v-upload-title {
+        font-size: 1.3rem;
+        color: var(--text);
+        margin-bottom: 0.5rem;
+        font-weight: 600;
+    }
+
+    .v-upload-hint {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+        display: block;
+        margin-bottom: 1rem;
+    }
+
+    .v-upload-formats {
+        display: inline-block;
+        background: rgba(255,189,89,0.1);
+        color: var(--primary);
+        padding: 0.4rem 1.2rem;
+        border-radius: 50px;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255,189,89,0.3);
+    }
+
+    .v-upload-area input { 
+        display: none; 
+    }
+
+    /* ===== حقل الإدخال المحسن ===== */
+    .v-input-group {
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        background: rgba(0,0,0,0.2);
+        padding: 0.5rem;
+        border-radius: 20px;
+        border: 1px solid rgba(255,189,89,0.1);
+    }
+
+    .v-input-icon {
+        padding: 0 1rem;
+        color: var(--primary);
+        font-size: 1.2rem;
+    }
+
+    .v-input-group input {
+        flex: 1;
+        padding: 1rem;
+        background: transparent;
+        border: none;
+        color: var(--text);
+        font-family: 'Cairo';
+        font-size: 1rem;
+        outline: none;
+    }
+
+    .v-input-group input::placeholder {
+        color: var(--text-muted);
+        opacity: 0.7;
+    }
+
+    .v-input-group input:focus {
+        outline: none;
+    }
+
+    .v-btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #000;
+        border: none;
+        border-radius: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.3s;
+        padding: 1rem 2rem;
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        white-space: nowrap;
+    }
+
+    .v-btn-primary:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .v-btn-primary i {
+        font-size: 1rem;
+    }
+
+    /* ===== تحسين للشاشات الصغيرة ===== */
+    @media (max-width: 768px) {
+        .v-input-group {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 1rem;
+        }
+
+        .v-input-icon {
+            display: none;
+        }
+
+        .v-btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .v-upload-area {
+            padding: 1.5rem;
+        }
+
+        .v-upload-icon {
+            font-size: 3rem;
+        }
+
+        .v-upload-title {
+            font-size: 1.1rem;
+        }
+    }
+
+    /* === عنوان القسم === */
+    .v-section-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        animation: vFadeInUp 0.8s ease 0.3s both;
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        padding: 1rem 1.5rem;
+        border-radius: 20px;
+        border: 1px solid rgba(255,189,89,0.1);
+    }
+
+    .v-section-title h3 {
+        color: var(--primary);
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin: 0;
+    }
+
+    .v-items-count {
+        background: rgba(255,189,89,0.1);
+        color: var(--primary);
+        padding: 0.4rem 1.2rem;
+        border-radius: 30px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        border: 1px solid rgba(255,189,89,0.3);
+    }
+
+    /* === شبكة البطاقات الصوتية === */
+    .v-audio-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.8rem;
+        animation: vFadeInUp 0.8s ease 0.4s both;
+    }
+
+    .v-audio-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 25px;
+        overflow: hidden;
+        border: 1px solid rgba(255,189,89,0.1);
+        transition: all 0.4s;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.5);
+        animation: vScaleIn 0.5s ease backwards;
+    }
+
+    .v-audio-card:nth-child(1) { animation-delay: 0.1s; }
+    .v-audio-card:nth-child(2) { animation-delay: 0.15s; }
+    .v-audio-card:nth-child(3) { animation-delay: 0.2s; }
+    .v-audio-card:nth-child(4) { animation-delay: 0.25s; }
+    .v-audio-card:nth-child(5) { animation-delay: 0.3s; }
+
+    .v-audio-card:hover { 
+        transform: translateY(-8px); 
+        border-color: var(--primary); 
+        box-shadow: 0 20px 30px rgba(0,0,0,0.7), 0 0 20px rgba(255,189,89,0.3);
+    }
+
+    .v-audio-header {
+        padding: 1.2rem;
+        border-bottom: 1px solid rgba(255,189,89,0.1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .v-audio-title { 
+        color: var(--primary); 
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1rem;
+    }
+
+    .v-audio-title i {
+        font-size: 1rem;
+        color: var(--primary);
+    }
+
+    .v-delete-btn {
+        background: linear-gradient(135deg, #ff4444, #cc0000);
+        color: white;
+        border: none;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .v-delete-btn:hover {
+        transform: scale(1.1) rotate(90deg);
+        background: #cc0000;
+    }
+
+    .v-audio-body { 
+        padding: 1.2rem; 
+        background: #111;
+    }
+
+    .v-audio-body audio {
+        width: 100%;
+        border-radius: 10px;
+    }
+
+    audio::-webkit-media-controls-panel {
+        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+        border: 1px solid rgba(255,189,89,0.2);
+    }
+
+    audio::-webkit-media-controls-play-button {
+        background-color: var(--primary);
+        border-radius: 50%;
+    }
+
+    /* === Empty State === */
+    .v-empty-state {
+        grid-column: 1/-1;
+        text-align: center;
+        padding: 4rem 2rem;
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 30px;
+        border: 2px dashed rgba(255,189,89,0.2);
+        color: var(--text-muted);
+    }
+
+    .v-empty-state i {
+        font-size: 4rem;
+        color: var(--primary);
+        opacity: 0.5;
+        margin-bottom: 1rem;
+        animation: vFloat 3s ease-in-out infinite;
+    }
+
+    .v-empty-state p {
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* === زر العودة === */
+    .v-back-home {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .v-back-home a {
+        color: var(--text-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border: 1px solid var(--border);
+        border-radius: 40px;
+        transition: all 0.3s;
+    }
+
+    .v-back-home a:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateX(-5px);
+    }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+        .v-container { 
+            padding: 1rem; 
+            padding-top: 5rem; 
+        }
+
+        .v-tab-btn { 
+            padding: 0.8rem 1.5rem; 
+            font-size: 0.95rem; 
+        }
+
+        .v-upload-section {
+            padding: 1.5rem;
+        }
+
+        .v-upload-header h2 {
+            font-size: 1.5rem;
+        }
+
+        .v-audio-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .v-section-title h3 {
+            font-size: 1.2rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .v-upload-header {
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .v-upload-header i {
+            margin: 0 auto;
+        }
+    }
+
+    /* === سكرول مخصص === */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="v-container">
+    <!-- Tabs محسنة -->
+    <div class="v-tabs">
+        <a href="{% url 'services:voice_dashboard' %}" class="v-tab-btn">الرئيسية</a>
+        <a href="{% url 'services:voice_profile_edit' %}" class="v-tab-btn">المعلومات الشخصية</a>
+        <a href="{% url 'services:voice_portfolio' %}" class="v-tab-btn active">معرض الأعمال</a>
+        
+        {% if is_admin_view %}
+        <a href="{% url 'services:admin_close_panel' %}" class="v-tab-btn" style="background: #d35400; color: #fff; border: none;">
+            <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- كارد رفع الأعمال المحسن والمعدل -->
+    <div class="v-upload-section">
+        <div class="v-upload-header">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <h2>إضافة عمل صوتي جديد</h2>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data" class="v-upload-form">
+            {% csrf_token %}
+            
+            <div class="v-upload-area-wrapper">
+                <label class="v-upload-area">
+                    <i class="fas fa-music v-upload-icon"></i>
+                    <span class="v-upload-title">اسحب الملفات الصوتية هنا</span>
+                    <span class="v-upload-hint">أو اضغط لاختيار الملفات</span>
+                    <span class="v-upload-formats">MP3, WAV, OGG (بحد أقصى 10 ملفات)</span>
+                    <input type="file" name="portfolio_files" multiple accept="audio/*" required>
+                </label>
+            </div>
+
+            <div class="v-input-group">
+                <span class="v-input-icon"><i class="fas fa-pencil-alt"></i></span>
+                <input type="text" name="title" placeholder="اكتب وصفاً للعمل الصوتي (مثال: إعلان بنك الرياض)" required>
+                <button type="submit" class="v-btn-primary">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    رفع
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- عنوان القسم مع عدد الأعمال -->
+    <div class="v-section-title">
+        <h3>
+            <i class="fas fa-headphones"></i>
+            أعمالك الصوتية
+        </h3>
+        <span class="v-items-count">{{ portfolio_items|length }} عمل</span>
+    </div>
+
+    <!-- شبكة البطاقات الصوتية -->
+    <div class="v-audio-grid">
+        {% for item in portfolio_items %}
+        <div class="v-audio-card">
+            <div class="v-audio-header">
+                <span class="v-audio-title">
+                    <i class="fas fa-music"></i>
+                    {{ item.title|default:"عمل صوتي" }}
+                </span>
+                <form action="{% url 'services:delete_portfolio_item' item.id %}" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا العمل الصوتي؟');">
+                    {% csrf_token %}
+                    <button type="submit" class="v-delete-btn">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </form>
+            </div>
+            <div class="v-audio-body">
+                <audio controls>
+                    <source src="{{ item.media_url }}" type="audio/mpeg">
+                    متصفحك لا يدعم الصوت
+                </audio>
+            </div>
+        </div>
+        {% empty %}
+        <div class="v-empty-state">
+            <i class="fas fa-folder-open"></i>
+            <p>لم تقم برفع أي أعمال صوتية بعد</p>
+            <small style="color: var(--text-muted);">قم برفع أعمالك الصوتية لتظهر هنا</small>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- زر العودة للوحة التحكم -->
+    <div class="v-back-home">
+        <a href="{% url 'services:voice_dashboard' %}">
+            <i class="fas fa-arrow-right"></i>
+            العودة للوحة التحكم
+        </a>
+    </div>
+</div>
+{% endblock %}

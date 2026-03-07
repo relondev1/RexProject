@@ -1,0 +1,553 @@
+{% extends 'base.html' %}
+
+{% block title %}تعديل بيانات المودل - ريكس{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* استيراد نفس الستايل السابق */
+    :root {
+        --mdl-primary: #FFBD59; 
+        --mdl-primary-dark: #E6A84A; 
+        --mdl-primary-light: rgba(255, 189, 89, 0.15);
+        --mdl-danger: #e74c3c;
+    }
+    
+    /* أنميشنات */
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    /* Container & Tabs (نسخ من الصفحة السابقة للحفاظ على التناسق) */
+    .mdl-container { 
+        max-width: 1100px; 
+        margin: 0 auto; 
+        padding: 2rem; 
+        padding-top: 6rem; 
+        animation: fadeInUp 0.8s ease;
+    }
+    
+    /* رأس الصفحة */
+    .mdl-page-header {
+        text-align: center;
+        margin-bottom: 2.5rem;
+    }
+
+    .mdl-page-header h1 {
+        color: var(--mdl-primary);
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 1rem;
+    }
+
+    .mdl-page-header h1 i {
+        animation: float 3s ease-in-out infinite;
+    }
+
+    .mdl-page-header p {
+        color: var(--text-muted);
+        font-size: 1.1rem;
+    }
+
+    /* Tabs محسنة */
+    .mdl-tabs { 
+        display: flex; 
+        gap: 1rem; 
+        margin-bottom: 2.5rem; 
+        flex-wrap: wrap; 
+        justify-content: center; 
+        animation: fadeInUp 0.8s ease 0.1s both;
+    }
+
+    .mdl-tab-btn { 
+        padding: 1rem 2.5rem; 
+        background: linear-gradient(145deg, var(--card-bg), #222); 
+        border: 2px solid var(--border); 
+        color: var(--text-muted); 
+        border-radius: 50px; 
+        text-decoration: none; 
+        font-weight: 700; 
+        font-size: 1.1rem; 
+        transition: all 0.4s; 
+        display: flex; 
+        align-items: center; 
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mdl-tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+        z-index: 0;
+    }
+
+    .mdl-tab-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .mdl-tab-btn i { 
+        position: relative;
+        z-index: 1;
+    }
+
+    .mdl-tab-btn span {
+        position: relative;
+        z-index: 1;
+    }
+
+    .mdl-tab-btn.active { 
+        background: linear-gradient(135deg, var(--mdl-primary), var(--mdl-primary-dark)); 
+        color: #000; 
+        border-color: transparent; 
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4); 
+    }
+
+    .mdl-tab-btn:hover:not(.active) { 
+        border-color: var(--mdl-primary); 
+        color: var(--mdl-primary); 
+        transform: translateY(-2px);
+    }
+
+    /* Card محسنة */
+    .mdl-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 30px; 
+        padding: 2.5rem;
+        border: 1px solid rgba(255,189,89,0.1);
+        box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        max-width: 800px; 
+        margin: 0 auto;
+        position: relative;
+        overflow: hidden;
+        animation: fadeInUp 0.8s ease 0.2s both;
+    }
+
+    .mdl-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--mdl-primary), transparent);
+        animation: pulse 2s infinite;
+    }
+
+    .mdl-card-title {
+        color: var(--mdl-primary); 
+        font-size: 1.6rem; 
+        margin-bottom: 2rem;
+        display: flex; 
+        align-items: center; 
+        gap: 1rem; 
+        font-weight: 800;
+        border-right: 4px solid var(--mdl-primary); 
+        padding-right: 1.5rem;
+    }
+
+    .mdl-card-title i {
+        font-size: 1.8rem;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    /* Form Grid محسنة */
+    .mdl-form-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 1.5rem; 
+    }
+
+    .mdl-form-group { 
+        margin-bottom: 1.2rem; 
+        animation: fadeInUp 0.5s ease backwards;
+    }
+
+    .mdl-form-group:nth-child(1) { animation-delay: 0.1s; }
+    .mdl-form-group:nth-child(2) { animation-delay: 0.15s; }
+    .mdl-form-group:nth-child(3) { animation-delay: 0.2s; }
+    .mdl-form-group:nth-child(4) { animation-delay: 0.25s; }
+
+    .mdl-form-group label { 
+        display: flex; 
+        align-items: center; 
+        gap: 0.5rem; 
+        margin-bottom: 0.6rem; 
+        color: var(--text-muted); 
+        font-size: 0.95rem; 
+        font-weight: 500; 
+    }
+
+    .mdl-form-group label i { 
+        color: var(--mdl-primary); 
+        font-size: 1rem;
+    }
+
+    /* Input Wrapper للأيقونات الداخلية */
+    .mdl-input-wrapper {
+        position: relative;
+    }
+
+    .mdl-input-icon {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--text-muted);
+        font-size: 1rem;
+        transition: color 0.3s;
+    }
+
+    .mdl-form-group input, 
+    .mdl-form-group select, 
+    .mdl-form-group textarea {
+        width: 100%; 
+        padding: 0.9rem 2.5rem; 
+        background: rgba(0,0,0,0.3);
+        border: 2px solid var(--border); 
+        color: var(--text);
+        border-radius: 15px; 
+        font-family: 'Cairo'; 
+        font-size: 0.95rem; 
+        transition: all 0.3s;
+    }
+
+    .mdl-form-group input:focus, 
+    .mdl-form-group select:focus, 
+    .mdl-form-group textarea:focus {
+        border-color: var(--mdl-primary); 
+        outline: none; 
+        box-shadow: 0 0 15px rgba(255,189,89,0.2);
+        background: rgba(0,0,0,0.5);
+    }
+
+    .mdl-form-group input:focus + .mdl-input-icon {
+        color: var(--mdl-primary);
+    }
+
+    .mdl-form-group input[type="file"] {
+        padding: 0.7rem 1rem;
+        background: rgba(0,0,0,0.2);
+        cursor: pointer;
+    }
+
+    .mdl-form-group input[type="file"]::-webkit-file-upload-button {
+        background: var(--mdl-primary);
+        color: #000;
+        padding: 0.5rem 1rem;
+        border: none;
+        border-radius: 8px;
+        font-family: 'Cairo';
+        font-weight: 600;
+        margin-left: 1rem;
+        cursor: pointer;
+    }
+
+    hr {
+        border: none;
+        height: 1px;
+        background: linear-gradient(90deg, transparent, var(--mdl-primary), transparent);
+        margin: 2rem 0;
+    }
+
+    /* Button محسن */
+    .mdl-btn {
+        background: linear-gradient(135deg, var(--mdl-primary), var(--mdl-primary-dark));
+        color: #000; 
+        padding: 1.2rem; 
+        border: none; 
+        border-radius: 50px;
+        cursor: pointer; 
+        font-weight: 800; 
+        width: 100%; 
+        margin-top: 2rem;
+        transition: all 0.4s; 
+        font-size: 1.2rem; 
+        font-family: 'Cairo';
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .mdl-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .mdl-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .mdl-btn:hover { 
+        transform: translateY(-3px); 
+        box-shadow: 0 15px 30px rgba(255,189,89,0.4); 
+    }
+
+    .mdl-btn i {
+        font-size: 1.3rem;
+    }
+
+    /* Video Preview محسن */
+    .mdl-video-preview { 
+        margin-top: 1.5rem; 
+        border-radius: 15px; 
+        overflow: hidden; 
+        background: #000; 
+        border: 2px solid var(--mdl-primary);
+        box-shadow: 0 0 20px rgba(255,189,89,0.3);
+    }
+
+    .mdl-video-preview video {
+        width: 100%;
+        display: block;
+    }
+
+    /* زر العودة للرئيسية */
+    .mdl-back-home {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .mdl-back-home a {
+        color: var(--text-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border: 1px solid var(--border);
+        border-radius: 30px;
+        transition: all 0.3s;
+    }
+
+    .mdl-back-home a:hover {
+        border-color: var(--mdl-primary);
+        color: var(--mdl-primary);
+        transform: translateX(-5px);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .mdl-container { 
+            padding: 1rem; 
+            padding-top: 5rem; 
+        }
+
+        .mdl-page-header h1 {
+            font-size: 2rem;
+        }
+        
+        .mdl-tabs { 
+            gap: 0.8rem; 
+        }
+
+        .mdl-tab-btn { 
+            padding: 0.8rem 1.5rem; 
+            font-size: 0.9rem; 
+        }
+        
+        .mdl-form-grid { 
+            grid-template-columns: 1fr; 
+            gap: 0.5rem;
+        }
+        
+        .mdl-card { 
+            padding: 1.5rem; 
+        }
+
+        .mdl-card-title {
+            font-size: 1.3rem;
+        }
+    }
+
+    /* سكرول مخصص */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--mdl-primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--mdl-primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mdl-container">
+    <!-- Page Header -->
+    <div class="mdl-page-header">
+        <h1>
+            <i class="fas fa-user-edit"></i>
+            تعديل البيانات الشخصية
+        </h1>
+        <p>قم بتحديث معلوماتك الشخصية والمهنية</p>
+    </div>
+
+    <!-- Navigation Tabs محسنة -->
+    <div class="mdl-tabs">
+        <a href="{% url 'services:model_dashboard' %}" class="mdl-tab-btn">الرئيسية</a>
+        <a href="{% url 'services:model_profile_edit' %}" class="mdl-tab-btn active">المعلومات الشخصية</a>
+        <a href="{% url 'services:model_portfolio' %}" class="mdl-tab-btn">معرض الأعمال</a>
+        
+        {% if is_admin_view %}
+        <a href="{% url 'services:admin_close_panel' %}" class="mdl-tab-btn" style="background: #d35400; color: #fff; border: none;">
+            <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Card محسنة -->
+    <div class="mdl-card">
+        <div class="mdl-card-title">
+            <i class="fas fa-user-circle"></i> 
+            بيانات المودل
+        </div>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="profile_info">
+            
+            <div class="mdl-form-group">
+                <label><i class="fas fa-user"></i> الاسم الكامل</label>
+                <div class="mdl-input-wrapper">
+                    <i class="fas fa-user mdl-input-icon"></i>
+                    <input type="text" name="name" value="{{ model_instance.name|default:'' }}" placeholder="أدخل الاسم الكامل" required>
+                </div>
+            </div>
+            
+            <div class="mdl-form-grid">
+                <div class="mdl-form-group">
+                    <label><i class="fas fa-birthday-cake"></i> العمر</label>
+                    <div class="mdl-input-wrapper">
+                        <i class="fas fa-birthday-cake mdl-input-icon"></i>
+                        <input type="number" name="age" value="{{ model_instance.age|default:'' }}" placeholder="سنة">
+                    </div>
+                </div>
+                <div class="mdl-form-group">
+                    <label><i class="fas fa-venus-mars"></i> الجنس</label>
+                    <div class="mdl-input-wrapper">
+                        <i class="fas fa-venus-mars mdl-input-icon"></i>
+                        <select name="gender">
+                            <option value="male" {% if model_instance.gender == 'male' %}selected{% endif %}>ذكر</option>
+                            <option value="female" {% if model_instance.gender == 'female' %}selected{% endif %}>أنثى</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mdl-form-grid">
+                <div class="mdl-form-group">
+                    <label><i class="fas fa-arrows-alt-v"></i> الطول (سم)</label>
+                    <div class="mdl-input-wrapper">
+                        <i class="fas fa-arrows-alt-v mdl-input-icon"></i>
+                        <input type="text" name="height" value="{{ model_instance.height|default:'' }}" placeholder="مثال: 175">
+                    </div>
+                </div>
+                <div class="mdl-form-group">
+                    <label><i class="fas fa-weight-hanging"></i> الوزن (كجم)</label>
+                    <div class="mdl-input-wrapper">
+                        <i class="fas fa-weight-hanging mdl-input-icon"></i>
+                        <input type="text" name="weight" value="{{ model_instance.weight|default:'' }}" placeholder="مثال: 70">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mdl-form-grid">
+                <div class="mdl-form-group">
+                    <label><i class="fas fa-eye"></i> لون العيون</label>
+                    <div class="mdl-input-wrapper">
+                        <i class="fas fa-eye mdl-input-icon"></i>
+                        <input type="text" name="eye_color" value="{{ model_instance.eye_color|default:'' }}" placeholder="مثال: بني">
+                    </div>
+                </div>
+                <div class="mdl-form-group">
+                    <label><i class="fas fa-spray-can"></i> لون الشعر</label>
+                    <div class="mdl-input-wrapper">
+                        <i class="fas fa-spray-can mdl-input-icon"></i>
+                        <input type="text" name="hair_color" value="{{ model_instance.hair_color|default:'' }}" placeholder="مثال: أسود">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mdl-form-group">
+                <label><i class="fas fa-image"></i> رابط الصورة الشخصية</label>
+                <div class="mdl-input-wrapper">
+                    <i class="fas fa-image mdl-input-icon"></i>
+                    <input type="text" name="image_url" value="{{ model_instance.image_url|default:'' }}" placeholder="https://example.com/image.jpg">
+                </div>
+            </div>
+
+            <hr>
+
+            <div class="mdl-form-group">
+                <label><i class="fas fa-video"></i> فيديو تعريفي (اختياري)</label>
+                <input type="file" name="video_file" accept="video/*">
+            </div>
+            
+            {% if model_instance.video_url %}
+            <div class="mdl-video-preview">
+                <video width="100%" controls>
+                    <source src="{{ model_instance.video_url }}" type="video/mp4">
+                </video>
+            </div>
+            {% endif %}
+
+            <button type="submit" class="mdl-btn">
+                <i class="fas fa-save"></i>
+                حفظ التغييرات
+            </button>
+        </form>
+
+        <!-- زر العودة للرئيسية -->
+        <div class="mdl-back-home">
+            <a href="{% url 'services:model_dashboard' %}">
+                <i class="fas fa-arrow-right"></i>
+                العودة للوحة التحكم
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

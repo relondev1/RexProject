@@ -1,0 +1,480 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}إدارة البنرات{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* تحسينات عامة */
+    .banners-container {
+        padding: 1rem 0;
+    }
+
+    /* === نموذج الإضافة المحسن === */
+    .form-add {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        padding: 2rem;
+        border-radius: 30px;
+        margin-bottom: 2.5rem;
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .form-add::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 189, 89, 0.05) 0%, transparent 70%);
+        animation: float 10s linear infinite;
+    }
+
+    .form-add h3 {
+        margin-bottom: 1.5rem;
+        color: var(--primary);
+        font-size: 1.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .form-add h3 i {
+        font-size: 1.5rem;
+        background: linear-gradient(135deg, var(--primary), #fff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .form-add form {
+        position: relative;
+        z-index: 2;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+        flex: 1;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    .form-group label i {
+        color: var(--primary);
+        margin-left: 0.3rem;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 0.8rem 1rem;
+        background: var(--background);
+        border: 2px solid var(--border);
+        color: var(--text);
+        border-radius: 15px;
+        transition: all 0.3s ease;
+        font-family: 'Cairo', sans-serif;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(255, 189, 89, 0.1);
+    }
+
+    .form-group input::placeholder {
+        color: var(--text-muted);
+        opacity: 0.5;
+    }
+
+    /* === شبكة البطاقات المحسنة === */
+    .banner-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: 1.8rem;
+        margin-top: 1rem;
+    }
+
+    .banner-card {
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 25px;
+        overflow: hidden;
+        border: 1px solid rgba(255, 189, 89, 0.1);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+    }
+
+    .banner-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        transform: translateX(-100%);
+        transition: transform 0.6s;
+        z-index: 2;
+    }
+
+    .banner-card:hover::before {
+        transform: translateX(100%);
+    }
+
+    .banner-card:hover {
+        transform: translateY(-8px);
+        border-color: var(--primary);
+        box-shadow: 0 20px 30px rgba(255, 189, 89, 0.2);
+    }
+
+    .banner-image-wrapper {
+        position: relative;
+        width: 100%;
+        height: 180px;
+        overflow: hidden;
+        background: linear-gradient(145deg, #2a2a2a, #1a1a1a);
+    }
+
+    .banner-card img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.6s ease;
+    }
+
+    .banner-card:hover img {
+        transform: scale(1.1);
+    }
+
+    .banner-status {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        padding: 0.4rem 1rem;
+        border-radius: 30px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        z-index: 2;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .banner-status.active {
+        background: linear-gradient(135deg, var(--success), #27ae60);
+        color: #fff;
+    }
+
+    .banner-status.inactive {
+        background: linear-gradient(135deg, var(--danger), #c0392b);
+        color: #fff;
+    }
+
+    .banner-body {
+        padding: 1.5rem;
+        background: linear-gradient(145deg, var(--card-bg), #222);
+    }
+
+    .banner-title {
+        font-size: 1rem;
+        color: var(--text-muted);
+        margin-bottom: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .banner-title i {
+        color: var(--primary);
+        font-size: 1rem;
+    }
+
+    .banner-title strong {
+        color: var(--primary);
+        font-weight: 700;
+    }
+
+    .banner-actions {
+        display: flex;
+        gap: 0.8rem;
+        margin-top: 1rem;
+    }
+
+    .banner-actions form {
+        flex: 1;
+    }
+
+    /* === الأزرار المحسنة === */
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+        color: #000;
+        padding: 0.8rem 2rem;
+        border: none;
+        border-radius: 50px;
+        font-weight: 700;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.3);
+    }
+
+    .btn-primary::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .btn-primary:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .btn-primary:hover {
+        background: #fff;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(255, 189, 89, 0.4);
+    }
+
+    .btn-action {
+        width: 100%;
+        padding: 0.7rem 1rem;
+        border: none;
+        border-radius: 15px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .btn-action.toggle-active {
+        background: linear-gradient(135deg, var(--success), #27ae60);
+        color: #fff;
+    }
+
+    .btn-action.toggle-inactive {
+        background: linear-gradient(135deg, var(--danger), #c0392b);
+        color: #fff;
+    }
+
+    .btn-action.delete {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: #fff;
+    }
+
+    .btn-action:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-action i {
+        font-size: 0.9rem;
+    }
+
+    /* === حالة فارغة === */
+    .empty-state {
+        grid-column: 1/-1;
+        text-align: center;
+        padding: 4rem 2rem;
+        color: var(--text-muted);
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border-radius: 30px;
+        border: 2px dashed rgba(255, 189, 89, 0.2);
+        animation: fadeInUp 0.8s ease;
+    }
+
+    .empty-state i {
+        font-size: 4rem;
+        color: var(--primary);
+        opacity: 0.5;
+        margin-bottom: 1rem;
+        animation: float 3s ease-in-out infinite;
+    }
+
+    .empty-state p {
+        font-size: 1.2rem;
+        color: var(--text-light);
+    }
+
+    /* === أنيميشنات === */
+    @keyframes float {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+        .form-row {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        .form-add {
+            padding: 1.5rem;
+        }
+
+        .banner-grid {
+            grid-template-columns: 1fr;
+            gap: 1.2rem;
+        }
+
+        .banner-actions {
+            flex-direction: column;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .form-add h3 {
+            font-size: 1.2rem;
+        }
+
+        .btn-primary {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}
+<div style="display: flex; align-items: center; gap: 0.5rem;">
+    <i class="fas fa-images" style="color: var(--primary);"></i>
+    <span>إدارة البنرات الإعلانية (الصفحة الرئيسية)</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="banners-container">
+    <!-- نموذج الإضافة المحسن -->
+    <div class="form-add">
+        <h3>
+            <i class="fas fa-plus-circle"></i>
+            إضافة بنر جديد
+        </h3>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-row">
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-image"></i>
+                        رابط الصورة *
+                    </label>
+                    <input type="text" name="image_url" placeholder="https://example.com/image.jpg" required>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <i class="fas fa-link"></i>
+                        رابط عند الضغط
+                    </label>
+                    <input type="text" name="link_url" placeholder="https://example.com">
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label>
+                    <i class="fas fa-heading"></i>
+                    العنوان (اختياري)
+                </label>
+                <input type="text" name="title" placeholder="أدخل عنوان البنر">
+            </div>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-save"></i>
+                حفظ البنر
+            </button>
+        </form>
+    </div>
+
+    <!-- القائمة المحسنة -->
+    <div class="banner-grid">
+        {% for banner in banners %}
+        <div class="banner-card">
+            <div class="banner-image-wrapper">
+                <img src="{{ banner.image_url }}" alt="{{ banner.title|default:'بنر' }}">
+                <div class="banner-status {% if banner.is_active %}active{% else %}inactive{% endif %}">
+                    <i class="fas fa-{% if banner.is_active %}check-circle{% else %}times-circle{% endif %}"></i>
+                    {% if banner.is_active %} مفعل {% else %} معطل {% endif %}
+                </div>
+            </div>
+            <div class="banner-body">
+                <div class="banner-title">
+                    <i class="fas fa-tag"></i>
+                    <span>العنوان: <strong>{{ banner.title|default:"بدون عنوان" }}</strong></span>
+                </div>
+                {% if banner.link_url %}
+                <div class="banner-title">
+                    <i class="fas fa-link"></i>
+                    <span>الرابط: <strong style="color: var(--primary);">{{ banner.link_url|truncatechars:30 }}</strong></span>
+                </div>
+                {% endif %}
+                <div class="banner-actions">
+                    <form action="{% url 'services:admin_toggle_banner' banner.id %}" method="post" style="flex: 1;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action {% if banner.is_active %}toggle-inactive{% else %}toggle-active{% endif %}">
+                            <i class="fas fa-{% if banner.is_active %}ban{% else %}check{% endif %}"></i>
+                            {% if banner.is_active %} تعطيل {% else %} تفعيل {% endif %}
+                        </button>
+                    </form>
+                    <form action="{% url 'services:admin_delete_banner' banner.id %}" method="post" onsubmit="return confirm('هل أنت متأكد من حذف هذا البنر؟');" style="flex: 1;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-action delete">
+                            <i class="fas fa-trash-alt"></i>
+                            حذف
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="empty-state">
+            <i class="fas fa-images"></i>
+            <p>لا توجد بنرات إعلانية حالياً</p>
+            <p style="font-size: 0.9rem; margin-top: 0.5rem;">أضف بنراً جديداً باستخدام النموذج أعلاه</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

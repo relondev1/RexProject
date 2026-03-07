@@ -1,0 +1,57 @@
+{% extends 'admin_base.html' %}
+
+{% block title %}إدارة الطلبات والمحادثات{% endblock %}
+
+{% block nav_messages %}active{% endblock %}
+
+{% block extra_css %}
+<style>
+    .requests-grid { display: grid; gap: 1rem; }
+    .request-card {
+        background: var(--card-bg); border: 1px solid var(--border);
+        border-radius: 8px; padding: 1.5rem;
+        display: flex; justify-content: space-between; align-items: center;
+        transition: all 0.3s; text-decoration: none; color: inherit;
+    }
+    .request-card:hover { border-color: var(--primary); transform: translateX(-5px); }
+    .request-info h4 { color: var(--foreground); margin-bottom: 0.25rem; }
+    .request-info p { color: var(--text-muted); font-size: 0.9rem; }
+    .request-meta { text-align: left; }
+    .status-badge { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
+    .status-active { background: rgba(46, 204, 113, 0.2); color: var(--success); }
+    .status-closed { background: rgba(149, 165, 166, 0.2); color: var(--text-muted); }
+    .time-stamp { font-size: 0.85rem; color: var(--text-muted); margin-top: 0.5rem; }
+</style>
+{% endblock %}
+
+{% block page_title %}سجل الطلبات والمحادثات{% endblock %}
+
+{% block content %}
+<div class="requests-grid">
+    {% for chat in chats %}
+    <a href="{% url 'services:admin_chat_view' chat.id %}" class="request-card">
+        <div class="request-info">
+            <h4>
+                <i class="fas fa-user"></i> {{ chat.client_name|default:"عميل" }} 
+                <small style="color:var(--text-muted);">مع</small> 
+                <i class="fas fa-user-tie"></i> {{ chat.provider_name|default:"مزود" }}
+            </h4>
+            <p>{{ chat.last_message|truncatechars:50|default:"محادثة جديدة" }}</p>
+        </div>
+        <div class="request-meta">
+            <span class="status-badge status-{{ chat.status }}">
+                {% if chat.status == 'active' %} نشطة {% else %} مغلقة {% endif %}
+            </span>
+            <div class="time-stamp">
+                {{ chat.last_message_time|date:"H:i" }}
+            </div>
+        </div>
+    </a>
+    {% empty %}
+    <div style="text-align:center; padding:3rem; color:var(--text-muted);">
+        <i class="fas fa-inbox" style="font-size:3rem; margin-bottom:1rem;"></i>
+        <p>لا توجد طلبات أو محادثات حالياً</p>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

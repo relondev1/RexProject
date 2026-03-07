@@ -1,1025 +1,1355 @@
-from django.shortcuts import render, redirect
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
-from django.contrib import messages 
-from django.contrib.auth.models import User
-from django.http import JsonResponse
+from urllib import request
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_http_methods
+from django.core.paginator import Paginator
 from django.db import connection
-from django.views.decorators.csrf import csrf_exempt
-from datetime import datetime
-import requests
-import json
+from .forms import ContactMessageForm
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth import login as auth_login, logout as auth_logout
+from django.urls import reverse
+from django.contrib import messages
+from django.contrib.auth.models import User
+from functools import wraps
 from django.contrib.auth.hashers import make_password
+import json
 import os
-import dotenv
+from django.core.files.storage import FileSystemStorage
+from django.conf import settings
+from django.db import IntegrityError
 
-dotenv.load_dotenv()
+# ==========================
+# دوال مساعدة (Helper Functions)
+# ==========================
 
-BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-SERVER_ID = os.getenv("DISCORD_SERVER_ID")
-WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
+def dictfetchall(cursor):
+    """تحويل cursor rows إلى list of dictionaries"""
+    columns = [col[0] for col in cursor.description]
+    return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
-
-
-import os, requests, dotenv
-
-dotenv.load_dotenv()
-
-BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-SERVER_ID = os.getenv("DISCORD_SERVER_ID")
-
-headers = {"Authorization": f"Bot {BOT_TOKEN}"}
-
-r = requests.get(f"https://discord.com/api/v10/guilds/{SERVER_ID}", headers=headers)
-print("Status:", r.status_code)
-print(r.text)
-
-
-
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-def permanent_delete_report(request, report_id):
-    user_privs = get_detailed_privileges(request.user.id, 'البلاغات')
-    
-    if user_privs.get('حذف نهائي', 0) != 1:
-        return JsonResponse({'success': False, 'message': 'لا تملك صلاحية الحذف النهائي للبلاغات.'})
-    
-    try:
-        if not report_id:
-            return JsonResponse({'success': False, 'message': 'معرف البلاغ غير صحيح.'})
-        
-        report_id = int(report_id)
-        
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT id FROM reports WHERE id = %s", [report_id])
-            report_exists = cursor.fetchone()
-            
-            if not report_exists:
-                return JsonResponse({'success': False, 'message': 'البلاغ غير موجود.'})
-            
-            cursor.execute("UPDATE reports SET perm = 1 WHERE id = %s", [report_id])
-            
-        return JsonResponse({'success': True, 'message': 'تم الحذف النهائي للبلاغ بنجاح.'})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'حدث خطأ أثناء الحذف النهائي: {str(e)}'})
-
-def initialize_privileges_system():
-    with connection.cursor() as cursor:
-        cursor.execute("DELETE FROM iaproject.user_priv")
-        
-        cursor.execute("SELECT id FROM auth_user")
-        users = [row[0] for row in cursor.fetchall()]
-        
-        cursor.execute("SELECT priv_id, form_id FROM iaproject.privilage")
-        privileges = cursor.fetchall()
-        
-        for user_id in users:
-            for priv_id, form_id in privileges:
-                status = 1 if priv_id in [1, 4, 9, 13] else 0
-                cursor.execute(
-                    "INSERT INTO iaproject.user_priv (user, priv_id, status) VALUES (%s, %s, %s)",
-                    [user_id, priv_id, status]
-                )
-        
-        print(f"تم تهيئة {len(users)} مستخدم × {len(privileges)} صلاحية = {len(users)*len(privileges)} سجل")
-
-def get_detailed_privileges(user_id, form_name):
+def get_user_role(user_id):
+    """جلب رتبة المستخدم"""
     if not user_id:
-        return {}
-        
-    query = """
-        SELECT
-            p.priv_name,
-            COALESCE(up.status, 0) AS status
-        FROM
-            iaproject.privilage p
-        JOIN
-            iaproject.forms f ON p.form_id = f.form_id
-        LEFT JOIN
-            iaproject.user_priv up ON p.priv_id = up.priv_id AND up.user = %s
-        WHERE
-            f.form_name = %s
-    """
-    
+        return None
     with connection.cursor() as cursor:
-        cursor.execute(query, [user_id, form_name])
-        results = cursor.fetchall()
-        privileges = {row[0]: row[1] for row in results}
+        cursor.execute("SELECT role FROM evreyting_userprofile WHERE user_id = %s", [user_id])
+        row = cursor.fetchone()
+        return row[0] if row else None
+
+def admin_required(view_func):
+    """ decorator للتحقق من صلاحيات الأدمن"""
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        if not request.user.is_authenticated:
+            return redirect('services:login')
         
-    return privileges
+        role = get_user_role(request.user.id)
+        if role != 'admin':
+            messages.error(request, 'ليس لديك صلاحية للوصول إلى هذه الصفحة')
+            return redirect('services:home')
+        return view_func(request, *args, **kwargs)
+    return wrapper
 
-def get_user_forms(user_id):
-    if not user_id:
-        return []
+# ==========================
+# 1. المصادقة والمستخدمين (Auth)
+# ==========================
+
+def user_login(request):
+    """تسجيل الدخول"""
+    if request.user.is_authenticated:
+        return redirect('services:home')
         
-    query = """
-        SELECT DISTINCT
-            f.form_id,
-            f.form_name,
-            f.form_url,
-            f.title
-        FROM
-            iaproject.forms f
-        JOIN
-            iaproject.privilage p ON f.form_id = p.form_id
-        JOIN
-            iaproject.user_priv up ON p.priv_id = up.priv_id
-        WHERE
-            up.user = %s 
-            AND up.status = 1 
-            AND p.priv_name = 'الوصول'
-        ORDER BY f.form_id
-    """
-    
-    with connection.cursor() as cursor:
-        cursor.execute(query, [user_id])
-        columns = [col[0] for col in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-def index(request):
-    if request.method == "POST":
-        name = request.POST.get("name")
-        content = request.POST.get("content")
-        evidence_url = request.POST.get("evidence_url")
-
-        if name and content and evidence_url:
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        "INSERT INTO reports (name, content, evidence_url) VALUES (%s, %s, %s)",
-                        [name, content, evidence_url]
-                    )
-                messages.success(request, 'تم تسجيل الشكوى بنجاح!')
-            except Exception as e:
-                messages.error(request, f'حدث خطأ أثناء الحفظ: {e}')
+    if request.method == 'POST':
+        form = AuthenticationForm(request, data=request.POST)
+        if form.is_valid():
+            user = form.get_user()
+            auth_login(request, user)
+            
+            # التحقق من وجود بروفايل للمستخدم، إذا غير موجود ننشئه
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT id FROM evreyting_userprofile WHERE user_id = %s", [user.id])
+                if not cursor.fetchone():
+                    cursor.execute("INSERT INTO evreyting_userprofile (user_id, role) VALUES (%s, %s)", [user.id, 'client'])
+            
+            messages.success(request, f'أهلاً بك {user.username}!')
+            next_page = request.GET.get('next', 'services:home')
+            return redirect(next_page)
         else:
-            messages.warning(request, 'بيانات ناقصة، لم يتم تسجيل الشكوى.')
-        return redirect('index')
+            messages.error(request, 'اسم المستخدم أو كلمة المرور غير صحيحة')
+    else:
+        form = AuthenticationForm()
     
-    return render(request, "pages/index.html")
+    return render(request, 'registration/login.html', {'form': form})
 
-def ialoing(request):
-    if request.method == "POST":
-        username = request.POST["username"]
-        password = request.POST["password"]
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            login(request, user)
-            return redirect("home")
-        return render(request, "pages/ialogin.html", {"error": "اسم المستخدم أو كلمة المرور غير صحيحة"})
-    return render(request, "pages/ialogin.html")
+def user_logout(request):
+    """تسجيل الخروج"""
+    auth_logout(request)
+    messages.info(request, 'تم تسجيل الخروج بنجاح')
+    return redirect('services:home')
 
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-def delete_report(request, report_id):
-    user_privs = get_detailed_privileges(request.user.id, 'البلاغات')
-    
-    if user_privs.get('الحذف', 0) != 1:
-        return JsonResponse({'success': False, 'message': 'لا تملك صلاحية حذف البلاغات.'})
-    
-    try:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "UPDATE reports SET is_deleted = 1 WHERE id = %s", 
-                [report_id]
-            )
-        return JsonResponse({'success': True, 'message': 'تم حذف البلاغ بنجاح.'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'حدث خطأ أثناء حذف البلاغ: {str(e)}'})
-
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-def update_user(request, user_id):
-    user_privs = get_detailed_privileges(request.user.id, 'لوحة التحكم')
-    
-    if user_privs.get('تعديل شؤون', 0) != 1:
-        return JsonResponse({'success': False, 'message': 'لا تملك صلاحية تعديل الشؤون.'})
-    
-    try:
+def signup(request):
+    """إنشاء حساب جديد"""
+    if request.user.is_authenticated:
+        return redirect('services:home')
+        
+    if request.method == 'POST':
         username = request.POST.get('username')
         email = request.POST.get('email')
-        first_name = request.POST.get('first_name')
-        discord_id = request.POST.get('discord_id', '')
-        user_type = request.POST.get('user_type')
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
         
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT COUNT(*) FROM auth_user WHERE username = %s AND id != %s", [username, user_id])
-            if cursor.fetchone()[0] > 0:
-                return JsonResponse({'success': False, 'message': 'اسم المستخدم موجود مسبقاً'})
+        if password1 != password2:
+            messages.error(request, 'كلمتا المرور غير متطابقتين')
+        elif User.objects.filter(username=username).exists():
+            messages.error(request, 'اسم المستخدم موجود مسبقاً')
+        elif User.objects.filter(email=email).exists():
+            messages.error(request, 'البريد الإلكتروني مستخدم مسبقاً')
+        else:
+            user = User.objects.create_user(username=username, email=email, password=password1)
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO evreyting_userprofile (user_id, role) VALUES (%s, %s)", [user.id, 'client'])
+            auth_login(request, user)
+            messages.success(request, 'تم إنشاء الحساب بنجاح!')
+            return redirect('services:home')
             
-            cursor.execute(
-                "UPDATE auth_user SET username = %s, email = %s, first_name = %s, discord_id = %s, is_staff = %s, is_superuser = %s WHERE id = %s",
-                [username, email, first_name, discord_id,
-                 1 if user_type in ['management', 'deputy'] else 0,
-                 1 if user_type == 'deputy' else 0,
-                 user_id]
-            )
-            
-            if discord_id:
-                current_role = 'deputy' if user_type == 'deputy' else 'management' if user_type == 'management' else 'member'
-                discord_result = assign_discord_role(discord_id, current_role, request.user.username)
-                if not discord_result['success']:
-                    return JsonResponse({'success': False, 'message': f'تم تحديث المستخدم ولكن فشل تحديث رتبة الديسكورد: {discord_result["message"]}'})
-        
-        return JsonResponse({'success': True, 'message': 'تم تحديث المستخدم بنجاح.'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'حدث خطأ أثناء تحديث المستخدم: {str(e)}'})
+    return render(request, 'registration/signup.html')
 
-@login_required(login_url='ialogin')
-def console(request):
-    user_privs = get_detailed_privileges(request.user.id, 'لوحة التحكم')
+# ==========================
+# 2. الصفحات الرئيسية والقوائم (General Views)
+# ==========================
+
+def home(request):
+    """الصفحة الرئيسية"""
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_banner WHERE is_active = TRUE ORDER BY id DESC LIMIT 5")
+        banners = dictfetchall(cursor)
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_model WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 6")
+        models = dictfetchall(cursor)
+        cursor.execute("SELECT * FROM evreyting_contentcreator WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 6")
+        creators = dictfetchall(cursor)
+        cursor.execute("SELECT * FROM evreyting_videoproduction WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 6")
+        productions = dictfetchall(cursor)
+        cursor.execute("SELECT * FROM evreyting_voiceartist WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 6")
+        artists = dictfetchall(cursor)
+        cursor.execute("SELECT * FROM evreyting_contentwriting WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 6")
+        writers = dictfetchall(cursor)
+        cursor.execute("SELECT * FROM evreyting_siteportfolio WHERE is_active = TRUE ORDER BY created_at DESC LIMIT 6")
+        works = dictfetchall(cursor)
     
-    if user_privs.get('الوصول', 0) != 1:
-        return render(request, "pages/access_denied.html")
+    context = {
+        'models': models, 'creators': creators, 'productions': productions,
+        'artists': artists, 'writers': writers, 'works': works,
+        'banners': banners,
+    }
+    return render(request, 'services/home.html', context)
 
-    user_forms = get_user_forms(request.user.id)
+def model_list(request):
+    """قائمة المودلز"""
+    gender_filter = request.GET.get('gender', '')
+    page = int(request.GET.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
     
     with connection.cursor() as cursor:
-        cursor.execute("""
-            SELECT id, username, email, is_staff, is_superuser, 
-                   COALESCE(is_owner, 0) as is_owner, 
-                   COALESCE(discord_id, '') as discord_id,
-                   first_name
-            FROM auth_user 
-            ORDER BY is_owner DESC, is_superuser DESC, is_staff DESC, username
-        """)
-        columns = [col[0] for col in cursor.description]
-        users = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        count_query = "SELECT COUNT(*) FROM evreyting_model WHERE is_active = TRUE"
+        params = []
+        if gender_filter:
+            count_query += " AND gender = %s"
+            params.append(gender_filter)
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
         
-        cursor.execute("SELECT COUNT(*) FROM auth_user")
+        query = """SELECT id, name, age, gender, image_url, video_url, is_active, created_at, user_id FROM evreyting_model WHERE is_active = TRUE"""
+        data_params = []
+        if gender_filter:
+            query += " AND gender = %s"
+            data_params.append(gender_filter)
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        data_params.extend([per_page, offset])
+        
+        cursor.execute(query, data_params)
+        models = dictfetchall(cursor)
+    
+    total_pages = (total + per_page - 1) // per_page
+    page_obj = {
+        'object_list': models, 'number': page,
+        'paginator': {'num_pages': total_pages, 'count': total, 'page_range': range(1, total_pages + 1)},
+        'has_previous': page > 1, 'has_next': page < total_pages,
+        'previous_page_number': page - 1, 'next_page_number': page + 1,
+    }
+    context = {'page_obj': page_obj, 'gender_filter': gender_filter}
+    return render(request, 'services/model_list.html', context)
+
+def content_creator_list(request):
+    """قائمة صناع المحتوى"""
+    filter_type = request.GET.get('type', '')
+    page = int(request.GET.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+    
+    with connection.cursor() as cursor:
+        count_query = "SELECT COUNT(*) FROM evreyting_contentcreator WHERE is_active = TRUE"
+        params = []
+        if filter_type:
+            count_query += " AND platform = %s"
+            params.append(filter_type)
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+        
+        query = """SELECT id, name, specialty, followers, platform, experience, phone, email, image_url, video_url, is_active, created_at, user_id FROM evreyting_contentcreator WHERE is_active = TRUE"""
+        data_params = []
+        if filter_type:
+            query += " AND platform = %s"
+            data_params.append(filter_type)
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        data_params.extend([per_page, offset])
+        
+        cursor.execute(query, data_params)
+        creators = dictfetchall(cursor)
+    
+    total_pages = (total + per_page - 1) // per_page
+    page_obj = {
+        'object_list': creators, 'number': page,
+        'paginator': {'num_pages': total_pages, 'count': total, 'page_range': range(1, total_pages + 1)},
+        'has_previous': page > 1, 'has_next': page < total_pages,
+        'previous_page_number': page - 1, 'next_page_number': page + 1,
+    }
+    context = {'page_obj': page_obj, 'filter_type': filter_type}
+    return render(request, 'services/content_creator_list.html', context)
+
+def video_production_list(request):
+    """قائمة إنتاج الفيديو"""
+    type_filter = request.GET.get('type', '')
+    page = int(request.GET.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+    
+    with connection.cursor() as cursor:
+        count_query = "SELECT COUNT(*) FROM evreyting_videoproduction WHERE is_active = TRUE"
+        params = []
+        if type_filter:
+            count_query += " AND video_type = %s"
+            params.append(type_filter)
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+        
+        query = "SELECT * FROM evreyting_videoproduction WHERE is_active = TRUE"
+        if type_filter: query += " AND video_type = %s"
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        params.extend([per_page, offset])
+        
+        cursor.execute(query, params)
+        productions = dictfetchall(cursor)
+    
+    total_pages = (total + per_page - 1) // per_page
+    page_obj = {'object_list': productions, 'number': page, 'paginator': {'num_pages': total_pages, 'count': total, 'page_range': range(1, total_pages + 1)}, 'has_previous': page > 1, 'has_next': page < total_pages, 'previous_page_number': page - 1, 'next_page_number': page + 1}
+    return render(request, 'services/video_production_list.html', {'page_obj': page_obj, 'type_filter': type_filter})
+
+# =========================
+# قائمة الفنانين الصوتيين
+# =========================
+def voice_artist_list(request):
+    type_filter = request.GET.get('type', '')
+    page = int(request.GET.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+    
+    with connection.cursor() as cursor:
+        # 1. استعلام العد
+        count_query = "SELECT COUNT(*) FROM evreyting_voiceartist WHERE is_active = TRUE"
+        params = []
+        if type_filter:
+            count_query += " AND voice_type = %s"
+            params.append(type_filter)
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+        
+        # 2. استعلام جلب البيانات (تم إضافة audio_intro_url و gender)
+        query = """
+            SELECT id, name, gender, voice_type, languages, specialty, experience, 
+                   phone, email, image_url, audio_intro_url, is_active, created_at, user_id
+            FROM evreyting_voiceartist 
+            WHERE is_active = TRUE
+        """
+        data_params = []
+        if type_filter:
+            query += " AND voice_type = %s"
+            data_params.append(type_filter)
+        
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        data_params.extend([per_page, offset])
+        
+        cursor.execute(query, data_params)
+        artists = dictfetchall(cursor)
+    
+    
+    total_pages = (total + per_page - 1) // per_page
+    page_obj = {
+        'object_list': artists,
+        'number': page,
+        'paginator': {
+            'num_pages': total_pages,
+            'count': total,
+            'page_range': range(1, total_pages + 1)
+        },
+        'has_previous': page > 1,
+        'has_next': page < total_pages,
+        'previous_page_number': page - 1,
+        'next_page_number': page + 1,
+    }
+    
+    context = {
+        'page_obj': page_obj,
+        'type_filter': type_filter,
+    }
+    return render(request, 'services/voice_artist_list.html', context)
+
+
+# =========================
+# لوحة تحكم الفنان الصوتي
+# =========================
+
+# =========================
+# --- الفنانين الصوتيين (Voice) ---
+# =========================
+
+@login_required
+def voice_dashboard(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'voice']:
+        messages.error(request, 'هذه الصفحة مخصصة للفنانين الصوتيين فقط')
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_voiceartist WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+        views_count = instance['views'] if instance and instance.get('views') else 0
+        cursor.execute("SELECT COUNT(*) FROM evreyting_portfolio WHERE user_id = %s", [target_id])
+        portfolio_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM evreyting_chatroom WHERE (client_id = %s OR provider_id = %s) AND status = 'active'", [target_id, target_id])
+        chats_count = cursor.fetchone()[0]
+
+    context = {
+        'instance': instance, 'profile_views': views_count, 
+        'portfolio_count': portfolio_count, 'chats_count': chats_count,
+        'is_admin_view': is_admin_view, 'target_user_id': target_id
+    }
+    return render(request, 'services/voice_dashboard.html', context)
+
+@login_required
+def voice_profile_edit(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    is_admin = request.user.is_superuser or current_role == 'admin'
+    
+    if not is_admin and current_role != 'voice':
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_voiceartist WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        voice_type = request.POST.get('voice_type')
+        languages = request.POST.get('languages')
+        specialty = request.POST.get('specialty')
+        experience = request.POST.get('experience')
+        phone = request.POST.get('phone')
+        email = request.POST.get('email')
+        image_url = request.POST.get('image_url')
+        audio_intro_url = instance['audio_intro_url'] if instance else None
+        
+        if 'audio_intro_file' in request.FILES:
+            audio_file = request.FILES['audio_intro_file']
+            if audio_file.content_type.startswith('audio'):
+                fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'voices'))
+                filename = fs.save(f"intro_{target_id}_{audio_file.name}", audio_file)
+                audio_intro_url = f"{settings.MEDIA_URL}voices/{filename}"
+
+        with connection.cursor() as cursor:
+            if instance:
+                cursor.execute("UPDATE evreyting_voiceartist SET name=%s, voice_type=%s, languages=%s, specialty=%s, experience=%s, phone=%s, email=%s, image_url=%s, audio_intro_url=%s WHERE user_id=%s", 
+                    [name, voice_type, languages, specialty, experience, phone, email, image_url, audio_intro_url, target_id])
+            else:
+                cursor.execute("INSERT INTO evreyting_voiceartist (name, voice_type, languages, specialty, experience, phone, email, image_url, audio_intro_url, is_active, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", 
+                    [name, voice_type, languages, specialty, experience, phone, email, image_url, audio_intro_url, True, target_id])
+        
+        messages.success(request, 'تم حفظ المعلومات بنجاح')
+        return redirect('services:voice_profile_edit')
+
+    return render(request, 'services/voice_profile_edit.html', {'instance': instance, 'is_admin_view': is_admin_view, 'target_user_id': target_id})
+
+@login_required
+def voice_portfolio(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    is_admin = request.user.is_superuser or current_role == 'admin'
+    
+    if not is_admin and current_role != 'voice':
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_portfolio WHERE user_id = %s ORDER BY created_at DESC", [target_id])
+        portfolio_items = dictfetchall(cursor)
+
+    if request.method == 'POST':
+        files = request.FILES.getlist('portfolio_files')
+        title = request.POST.get('title', 'عمل صوتي')
+        
+        if files:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'portfolio'))
+            for f in files:
+                filename = fs.save(f.name, f)
+                file_url = f"{settings.MEDIA_URL}portfolio/{filename}"
+                item_type = 'audio'
+                with connection.cursor() as cursor:
+                    cursor.execute("INSERT INTO evreyting_portfolio (user_id, title, item_type, media_url) VALUES (%s, %s, %s, %s)", [target_id, title, item_type, file_url])
+            messages.success(request, f'تم إضافة {len(files)} أعمال صوتية')
+        return redirect('services:voice_portfolio')
+
+    return render(request, 'services/voice_portfolio.html', {'portfolio_items': portfolio_items, 'is_admin_view': is_admin_view, 'target_user_id': target_id})
+
+
+def content_writing_list(request):
+    """قائمة كتابة المحتوى"""
+    type_filter = request.GET.get('type', '')
+    page = int(request.GET.get('page', 1))
+    per_page = 12
+    offset = (page - 1) * per_page
+    
+    with connection.cursor() as cursor:
+        count_query = "SELECT COUNT(*) FROM evreyting_contentwriting WHERE is_active = TRUE"
+        params = []
+        if type_filter:
+            count_query += " AND writing_type = %s"
+            params.append(type_filter)
+        cursor.execute(count_query, params)
+        total = cursor.fetchone()[0]
+        
+        query = "SELECT id, name, writing_type, specialty, experience, articles_count, phone, email, image_url, is_active, created_at, user_id FROM evreyting_contentwriting WHERE is_active = TRUE"
+        if type_filter: query += " AND writing_type = %s"
+        query += " ORDER BY created_at DESC LIMIT %s OFFSET %s"
+        params.extend([per_page, offset])
+        
+        cursor.execute(query, params)
+        writers = dictfetchall(cursor)
+    
+    total_pages = (total + per_page - 1) // per_page
+    page_obj = {'object_list': writers, 'number': page, 'paginator': {'num_pages': total_pages, 'count': total, 'page_range': range(1, total_pages + 1)}, 'has_previous': page > 1, 'has_next': page < total_pages, 'previous_page_number': page - 1, 'next_page_number': page + 1}
+    return render(request, 'services/content_writing_list.html', {'page_obj': page_obj, 'type_filter': type_filter})
+
+# ==========================
+# 3.  والطلبات
+# ==========================
+
+@login_required
+def request_service(request):
+    """طلب خدمة"""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id FROM evreyting_userprofile WHERE user_id = %s", [request.user.id])
+        if not cursor.fetchone():
+            cursor.execute("INSERT INTO evreyting_userprofile (user_id, role) VALUES (%s, %s)", [request.user.id, 'client'])
+
+    service_name = request.GET.get('service', '')
+    if request.method == 'POST':
+        form = ContactMessageForm(request.POST)
+        if form.is_valid():
+            data = form.cleaned_data
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO evreyting_contactmessage (name, email, phone, service, message, is_read, created_at) VALUES (%s, %s, %s, %s, %s, %s, NOW())", [data['name'], data['email'], data['phone'], data['service'], data['message'], False])
+            messages.success(request, 'تم إرسال طلب الخدمة بنجاح')
+            return redirect('services:home')
+    else:
+        initial = {'service': service_name, 'name': request.user.get_full_name() or request.user.username, 'email': getattr(request.user, 'email', '')}
+        form = ContactMessageForm(initial=initial)
+    return render(request, 'services/request_service.html', {'form': form, 'service_name': service_name})
+
+# ==========================
+# 4. لوحات تحكم مقدمي الخدمة (Dashboards)
+# ==========================
+
+def get_current_target_id(request):
+    """تحديد معرف المستخدم المستهدف (من الجلسة للأدمن، أو من الحساب الشخصي)"""
+    if request.session.get('admin_control_id'):
+        return int(request.session['admin_control_id']), True
+    return request.user.id, False
+
+# === دالة الدخول (التي يضغط عليها الأدمن) ===
+@login_required
+def admin_open_panel(request, user_id):
+    """دخول الأدمن على لوحة تحكم أي مستخدم"""
+    is_admin = request.user.is_superuser or (get_user_role(request.user.id) == 'admin')
+    if not is_admin:
+        return redirect('services:home')
+    
+    request.session['admin_control_id'] = user_id
+    
+    target_role = get_user_role(user_id)
+    
+    # توجيه الرابط حسب نوع المستخدم
+    if target_role == 'model':
+        return redirect('services:model_dashboard')
+    elif target_role == 'creator':
+        return redirect('services:creator_dashboard')
+    elif target_role == 'voice':
+        return redirect('services:voice_dashboard')
+    elif target_role == 'videographer':
+        return redirect('services:video_dashboard') # إذا كانت الدالة موجودة
+    elif target_role == 'writer':
+        return redirect('services:writer_dashboard') # إذا كانت الدالة موجودة
+    else:
+        messages.warning(request, "هذا المستخدم ليس لديه لوحة تحكم خاصة")
+        return redirect('services:admin_users')
+
+# === دالة الخروج ===
+@login_required
+def admin_close_panel(request):
+    if 'admin_control_id' in request.session:
+        del request.session['admin_control_id']
+    return redirect('services:admin_users')
+
+
+# =========================
+# --- المودلز (Model) ---
+# =========================
+
+@login_required
+def model_dashboard(request):
+    # 1. تحديد المستخدم (إذا أدمن يأخذ من الجلسة، إذا عادي يأخذ حسابه)
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    # 2. التحقق من الصلاحية (يسمح فقط للأدمن أو المودل)
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'model']:
+        messages.error(request, 'هذه الصفحة مخصصة للمودلز فقط')
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_model WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+        views_count = instance['views'] if instance and instance.get('views') else 0
+        cursor.execute("SELECT COUNT(*) FROM evreyting_portfolio WHERE user_id = %s", [target_id])
+        portfolio_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM evreyting_chatroom WHERE (client_id = %s OR provider_id = %s) AND status = 'active'", [target_id, target_id])
+        chats_count = cursor.fetchone()[0]
+
+    context = {
+        'instance': instance, 
+        'profile_views': views_count, 
+        'portfolio_count': portfolio_count, 
+        'chats_count': chats_count,
+        'is_admin_view': is_admin_view, 
+        'target_user_id': target_id 
+    }
+    return render(request, 'services/model_dashboard.html', context)
+
+@login_required
+def model_profile_edit(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'model']:
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_model WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+
+    if request.method == 'POST':
+        name = request.POST.get('name')
+        age = request.POST.get('age') or None
+        gender = request.POST.get('gender')
+        height = request.POST.get('height')
+        weight = request.POST.get('weight')
+        eye_color = request.POST.get('eye_color')
+        hair_color = request.POST.get('hair_color')
+        image_url = request.POST.get('image_url')
+        video_url = instance['video_url'] if instance else None
+
+        if 'video_file' in request.FILES:
+            video_file = request.FILES['video_file']
+            if video_file.content_type.startswith('video'):
+                fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'videos'))
+                filename = fs.save(f"model_{target_id}_{video_file.name}", video_file)
+                video_url = f"{settings.MEDIA_URL}videos/{filename}"
+
+        with connection.cursor() as cursor:
+            if instance:
+                cursor.execute("UPDATE evreyting_model SET name=%s, age=%s, gender=%s, height=%s, weight=%s, eye_color=%s, hair_color=%s, image_url=%s, video_url=%s WHERE user_id=%s", 
+                    [name, age, gender, height, weight, eye_color, hair_color, image_url, video_url, target_id])
+            else:
+                cursor.execute("INSERT INTO evreyting_model (name, age, gender, height, weight, eye_color, hair_color, image_url, video_url, is_active, user_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)", 
+                    [name, age, gender, height, weight, eye_color, hair_color, image_url, video_url, True, target_id])
+        
+        messages.success(request, 'تم حفظ المعلومات بنجاح')
+        return redirect('services:model_profile_edit')
+
+    return render(request, 'services/model_profile_edit.html', {'model_instance': instance, 'is_admin_view': is_admin_view, 'target_user_id': target_id})
+
+@login_required
+def model_portfolio(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'model']:
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_portfolio WHERE user_id = %s ORDER BY created_at DESC", [target_id])
+        portfolio_items = dictfetchall(cursor)
+
+    if request.method == 'POST':
+        files = request.FILES.getlist('portfolio_files')
+        if files:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'portfolio'))
+            for f in files:
+                filename = fs.save(f.name, f)
+                file_url = f"{settings.MEDIA_URL}portfolio/{filename}"
+                ext = os.path.splitext(f.name)[1].lower()
+                item_type = 'image' if ext in ['.jpg', '.jpeg', '.png', '.gif'] else 'video'
+                with connection.cursor() as cursor:
+                    cursor.execute("INSERT INTO evreyting_portfolio (user_id, title, item_type, media_url) VALUES (%s, %s, %s, %s)", [target_id, f.name, item_type, file_url])
+            messages.success(request, f'تم إضافة {len(files)} عناصر')
+        return redirect('services:model_portfolio')
+
+    return render(request, 'services/model_portfolio.html', {'portfolio_items': portfolio_items, 'is_admin_view': is_admin_view, 'target_user_id': target_id})
+
+# --- صناع المحتوى ---
+# =========================
+# --- صناع المحتوى (Creator) ---
+# =========================
+
+@login_required
+def creator_dashboard(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    # السماح للأدمن أو لصانع المحتوى
+    if current_role not in ['admin', 'creator']:
+        messages.error(request, 'هذه الصفحة مخصصة لصناع المحتوى فقط')
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_contentcreator WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+        views_count = instance['views'] if instance and instance.get('views') else 0
+        cursor.execute("SELECT COUNT(*) FROM evreyting_portfolio WHERE user_id = %s", [target_id])
+        portfolio_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM evreyting_chatroom WHERE (client_id = %s OR provider_id = %s) AND status = 'active'", [target_id, target_id])
+        chats_count = cursor.fetchone()[0]
+
+    context = {
+        'instance': instance, 'profile_views': views_count, 
+        'portfolio_count': portfolio_count, 'chats_count': chats_count,
+        'is_admin_view': is_admin_view, 'target_user_id': target_id
+    }
+    return render(request, 'services/creator_dashboard.html', context)
+
+@login_required
+def creator_profile_edit(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'creator']:
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_contentcreator WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+
+    if request.method == 'POST':
+        form_data = {
+            'name': request.POST.get('name'), 'age': request.POST.get('age') or None,
+            'gender': request.POST.get('gender'), 'platform': request.POST.get('platform'),
+            'followers': request.POST.get('followers'), 'specialty': request.POST.get('specialty'),
+            'experience': request.POST.get('experience'), 'image_url': request.POST.get('image_url'),
+            'user_id': target_id
+        }
+        video_url = instance['video_url'] if instance else None
+        if 'video_file' in request.FILES:
+            video_file = request.FILES['video_file']
+            if video_file.content_type.startswith('video'):
+                fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'videos'))
+                filename = fs.save(f"creator_{target_id}_{video_file.name}", video_file)
+                video_url = f"{settings.MEDIA_URL}videos/{filename}"
+        form_data['video_url'] = video_url
+
+        with connection.cursor() as cursor:
+            if instance:
+                cursor.execute("UPDATE evreyting_contentcreator SET name=%(name)s, age=%(age)s, gender=%(gender)s, platform=%(platform)s, followers=%(followers)s, specialty=%(specialty)s, experience=%(experience)s, image_url=%(image_url)s, video_url=%(video_url)s WHERE user_id=%(user_id)s", form_data)
+            else:
+                cursor.execute("INSERT INTO evreyting_contentcreator (name, age, gender, platform, followers, specialty, experience, image_url, video_url, is_active, user_id) VALUES (%(name)s, %(age)s, %(gender)s, %(platform)s, %(followers)s, %(specialty)s, %(experience)s, %(image_url)s, %(video_url)s, TRUE, %(user_id)s)", form_data)
+        
+        messages.success(request, 'تم حفظ المعلومات بنجاح')
+        return redirect('services:creator_profile_edit')
+
+    return render(request, 'services/creator_profile_edit.html', {'instance': instance, 'is_admin_view': is_admin_view, 'target_user_id': target_id})
+
+@login_required
+def creator_portfolio(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'creator']:
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_portfolio WHERE user_id = %s ORDER BY created_at DESC", [target_id])
+        portfolio_items = dictfetchall(cursor)
+
+    if request.method == 'POST':
+        files = request.FILES.getlist('portfolio_files')
+        if files:
+            fs = FileSystemStorage(location=os.path.join(settings.MEDIA_ROOT, 'portfolio'))
+            for f in files:
+                filename = fs.save(f.name, f)
+                file_url = f"{settings.MEDIA_URL}portfolio/{filename}"
+                ext = os.path.splitext(f.name)[1].lower()
+                item_type = 'image' if ext in ['.jpg', '.jpeg', '.png', '.gif'] else 'video'
+                with connection.cursor() as cursor:
+                    cursor.execute("INSERT INTO evreyting_portfolio (user_id, title, item_type, media_url) VALUES (%s, %s, %s, %s)", [target_id, f.name, item_type, file_url])
+            messages.success(request, f'تم إضافة {len(files)} عناصر')
+        return redirect('services:creator_portfolio')
+
+    return render(request, 'services/creator_portfolio.html', {'portfolio_items': portfolio_items, 'is_admin_view': is_admin_view, 'target_user_id': target_id})
+
+# --- لوحات تحكم أخرى (مختصرة) ---
+@login_required
+def video_dashboard(request):
+    role = get_user_role(request.user.id)
+    if role != 'videographer':
+        messages.error(request, 'هذه الصفحة مخصصة لمنتجي الفيديو فقط')
+        return redirect('services:home')
+    # ... (يمكن إضافة المنطق هنا كما في model_dashboard إذا كانت هناك بيانات خاصة) ...
+    return render(request, 'services/provider_dashboard.html', {'role': 'منتج فيديو'})
+
+@login_required
+def voice_dashboard(request):
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    # التحقق المحسن: السماح للأدمن (حتى لو لم يكن لديه ملف شخصي) أو لفنان الصوتي
+    current_role = get_user_role(request.user.id)
+    is_admin = request.user.is_superuser or current_role == 'admin'
+    
+    if not is_admin and current_role != 'voice':
+        messages.error(request, 'هذه الصفحة مخصصة للفنانين الصوتيين فقط')
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_voiceartist WHERE user_id = %s", [target_id])
+        data = dictfetchall(cursor)
+        instance = data[0] if data else None
+        views_count = instance['views'] if instance and instance.get('views') else 0
+        cursor.execute("SELECT COUNT(*) FROM evreyting_portfolio WHERE user_id = %s", [target_id])
+        portfolio_count = cursor.fetchone()[0]
+        cursor.execute("SELECT COUNT(*) FROM evreyting_chatroom WHERE (client_id = %s OR provider_id = %s) AND status = 'active'", [target_id, target_id])
+        chats_count = cursor.fetchone()[0]
+
+    context = {
+        'instance': instance, 'profile_views': views_count, 
+        'portfolio_count': portfolio_count, 'chats_count': chats_count,
+        'is_admin_view': is_admin_view, 'target_user_id': target_id
+    }
+    return render(request, 'services/voice_dashboard.html', context)
+
+@login_required
+def writer_dashboard(request):
+    role = get_user_role(request.user.id)
+    if role != 'writer':
+        messages.error(request, 'هذه الصفحة مخصصة للكتّاب فقط')
+        return redirect('services:home')
+    return render(request, 'services/provider_dashboard.html', {'role': 'كاتب محتوى'})
+
+
+# ==========================
+# 5. الملفات الشخصية (Profiles)
+# ==========================
+
+def provider_profile(request, user_id):
+    """صفحة الملف الشخصي للمودل أو صانع المحتوى أو الفنان الصوتي"""
+    try:
+        user_obj = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return redirect('services:home')
+
+    role = get_user_role(user_id)
+    profile_data = None
+    
+    with connection.cursor() as cursor:
+        # 1. جلب البيانات حسب الدور
+        if role == 'model':
+            cursor.execute("SELECT * FROM evreyting_model WHERE user_id = %s", [user_id])
+            data = dictfetchall(cursor)
+            profile_data = data[0] if data else None
+            # زيادة المشاهدات
+            if profile_data and (not request.user.is_authenticated or request.user.id != user_id):
+                cursor.execute("UPDATE evreyting_model SET views = views + 1 WHERE user_id = %s", [user_id])
+        
+        elif role == 'creator':
+            cursor.execute("SELECT * FROM evreyting_contentcreator WHERE user_id = %s", [user_id])
+            data = dictfetchall(cursor)
+            profile_data = data[0] if data else None
+            # زيادة المشاهدات
+            if profile_data and (not request.user.is_authenticated or request.user.id != user_id):
+                cursor.execute("UPDATE evreyting_contentcreator SET views = views + 1 WHERE user_id = %s", [user_id])
+        
+        # === جديد: دعم الفنانين الصوتيين ===
+        elif role == 'voice':
+            cursor.execute("SELECT * FROM evreyting_voiceartist WHERE user_id = %s", [user_id])
+            data = dictfetchall(cursor)
+            profile_data = data[0] if data else None
+            # زيادة المشاهدات
+            if profile_data and (not request.user.is_authenticated or request.user.id != user_id):
+                cursor.execute("UPDATE evreyting_voiceartist SET views = views + 1 WHERE user_id = %s", [user_id])
+        
+        # 2. جلب معرض الأعمال (مشترك)
+        cursor.execute("SELECT * FROM evreyting_portfolio WHERE user_id = %s ORDER BY created_at DESC", [user_id])
+        portfolio_items = dictfetchall(cursor)
+
+    context = {
+        'provider_user': user_obj,
+        'role': role,
+        'profile_data': profile_data,
+        'portfolio_items': portfolio_items
+    }
+    return render(request, 'services/provider_profile.html', context)
+
+@login_required
+def provider_portal(request):
+    """لوحة تحكم موحدة لمقدمي الخدمة"""
+    role = get_user_role(request.user.id)
+    if role not in ['provider', 'admin', 'management']: 
+        messages.error(request, 'هذه اللوحة مخصصة لمقدمي الخدمات فقط')
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id, title, description, item_type, media_url, created_at FROM evreyting_portfolio WHERE user_id = %s ORDER BY created_at DESC", [request.user.id])
+        portfolio_items = dictfetchall(cursor)
+
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        description = request.POST.get('description')
+        item_type = request.POST.get('item_type')
+        media_url = request.POST.get('media_url')
+        if title and media_url and item_type:
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO evreyting_portfolio (user_id, title, description, item_type, media_url) VALUES (%s, %s, %s, %s, %s)", [request.user.id, title, description, item_type, media_url])
+            messages.success(request, 'تمت إضافة العمل بنجاح')
+            return redirect('services:provider_portal')
+
+    return render(request, 'services/provider_portal.html', {'portfolio_items': portfolio_items, 'role': role})
+
+@login_required
+def delete_portfolio_item(request, item_id):
+    """حذف عنصر من المعرض (يدعم وضع الأدمن)"""
+    
+    # 1. تحديد المستخدم المستهدف (إذا أدمن يأخذ من الجلسة)
+    target_id, is_admin_view = get_current_target_id(request)
+    
+    # 2. التحقق من الصلاحيات (يسمح فقط للأدمن أو صاحب الملف)
+    current_role = get_user_role(request.user.id)
+    if current_role not in ['admin', 'model', 'creator']: # أضف الأدوار الأخرى إذا لزم
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        # التحقق أن العنصر يتبع المستخدم المستهدف
+        cursor.execute("SELECT user_id FROM evreyting_portfolio WHERE id = %s", [item_id])
+        item = cursor.fetchone()
+        
+        if item and item[0] == target_id:
+            cursor.execute("DELETE FROM evreyting_portfolio WHERE id = %s", [item_id])
+            messages.success(request, 'تم حذف العمل بنجاح')
+        else:
+            messages.error(request, 'لا تملك صلاحية لحذف هذا العمل')
+            
+    # العودة للصفحة السابقة
+    return redirect(request.META.get('HTTP_REFERER', 'services:home'))
+
+# ==========================
+# 6. المحادثات (Chat)
+# ==========================
+
+@login_required
+def start_chat(request, provider_id):
+    if request.user.id == provider_id:
+        messages.error(request, "لا يمكنك فتح محادثة مع نفسك")
+        return redirect('services:home')
+
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT id FROM evreyting_chatroom WHERE (client_id = %s AND provider_id = %s) OR (client_id = %s AND provider_id = %s) LIMIT 1", [request.user.id, provider_id, provider_id, request.user.id])
+        room = cursor.fetchone()
+
+        if room:
+            return redirect('services:chat_room', room_id=room[0])
+        else:
+            cursor.execute("INSERT INTO evreyting_chatroom (client_id, provider_id, status) VALUES (%s, %s, 'active')", [request.user.id, provider_id])
+            new_room_id = cursor.lastrowid
+            return redirect('services:chat_room', room_id=new_room_id)
+
+@login_required
+def chat_room(request, room_id):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_chatroom WHERE id = %s", [room_id])
+        room_data = dictfetchall(cursor)
+        if not room_data: return redirect('services:home')
+        room = room_data[0]
+        
+        if request.user.id != room['client_id'] and request.user.id != room['provider_id']:
+            return redirect('services:home')
+
+        other_id = room['provider_id'] if request.user.id == room['client_id'] else room['client_id']
+        cursor.execute("SELECT id, username FROM auth_user WHERE id = %s", [other_id])
+        other_user = dictfetchall(cursor)[0]
+
+        cursor.execute("SELECT cm.*, u.username as sender_name, up.role as sender_role FROM evreyting_chatmessage cm LEFT JOIN auth_user u ON cm.sender_id = u.id LEFT JOIN evreyting_userprofile up ON cm.sender_id = up.user_id WHERE cm.room_id = %s ORDER BY cm.created_at ASC", [room_id])
+        messages = dictfetchall(cursor)
+        last_id = messages[-1]['id'] if messages else 0
+
+    context = {'room_id': room_id, 'other_user': other_user, 'messages': messages, 'last_id': last_id, 'current_user_id': request.user.id}
+    return render(request, 'services/chat_room.html', context)
+
+@login_required
+def send_message(request):
+    """إرسال رسالة"""
+    if request.method == 'POST':
+        room_id = request.POST.get('room_id')
+        content = request.POST.get('content')
+        
+        if content and room_id:
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO evreyting_chatmessage 
+                        (room_id, sender_id, content, status, is_read, created_at)
+                        VALUES (%s, %s, %s, 'sent', 0, NOW())
+                    """, [room_id, request.user.id, content])
+                    new_id = cursor.lastrowid
+                
+                return JsonResponse({'status': 'success', 'message_id': new_id})
+            except Exception as e:
+                print(f"Error sending message: {e}")
+                return JsonResponse({'status': 'error', 'message': str(e)})
+    
+    return JsonResponse({'status': 'error'})
+
+def get_messages_api(request, room_id):
+    last_id = request.GET.get('last_id', 0)
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT cm.id, cm.sender_id, cm.content, cm.created_at, u.username, up.role FROM evreyting_chatmessage cm LEFT JOIN auth_user u ON cm.sender_id = u.id LEFT JOIN evreyting_userprofile up ON cm.sender_id = up.user_id WHERE cm.room_id = %s AND cm.id > %s ORDER BY cm.created_at ASC", [room_id, last_id])
+        messages_data = dictfetchall(cursor)
+    
+    data = {'messages': [{'id': m['id'], 'sender_id': m['sender_id'], 'content': m['content'], 'time': m['created_at'].strftime('%I:%M %p') if m['created_at'] else '', 'sender_name': m['username'], 'role': m['role']} for m in messages_data]}
+    return JsonResponse(data)
+
+@login_required
+def my_chats(request):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT c.id, c.created_at, c.status, u1.username as client_name, u2.username as provider_name, (SELECT content FROM evreyting_chatmessage WHERE room_id = c.id ORDER BY created_at DESC LIMIT 1) as last_msg FROM evreyting_chatroom c JOIN auth_user u1 ON c.client_id = u1.id JOIN auth_user u2 ON c.provider_id = u2.id WHERE c.client_id = %s OR c.provider_id = %s ORDER BY c.created_at DESC", [request.user.id, request.user.id])
+        chats = dictfetchall(cursor)
+    return render(request, 'services/my_chats.html', {'chats': chats})
+
+# ==========================
+# 7. لوحة تحكم الأدمن (Admin Panel)
+# ==========================
+
+@admin_required
+def admin_dashboard(request):
+    """الصفحة الرئيسية للوحة التحكم"""
+    with connection.cursor() as cursor:
+        # 1. إجمالي المستخدمين (النشطين فقط، بدون المحذوفين)
+        cursor.execute("SELECT COUNT(*) FROM auth_user WHERE is_active = TRUE")
         users_count = cursor.fetchone()[0]
         
-        cursor.execute("SELECT COUNT(*) FROM auth_user WHERE is_staff = 1 OR is_superuser = 1")
-        staff_count = cursor.fetchone()[0]
+        # 2. الطلبات الجديدة (رسائل التواصل غير المقروءة)
+        cursor.execute("SELECT COUNT(*) FROM evreyting_contactmessage WHERE is_read = FALSE")
+        new_requests = cursor.fetchone()[0]
         
-        cursor.execute("SELECT COUNT(*) FROM auth_user WHERE is_staff = 0 AND is_superuser = 0")
-        regular_count = cursor.fetchone()[0]
-    
-    can_add = user_privs.get('إضافة  شؤون', 0) == 1
-    can_delete = user_privs.get('حذف شؤون', 0) == 1
-    can_edit = user_privs.get('تعديل شؤون', 0) == 1
+        # 3. إجمالي المحادثات (كل المحادثات الموجودة في الموقع)
+        cursor.execute("SELECT COUNT(*) FROM evreyting_chatroom")
+        total_chats = cursor.fetchone()[0]
 
     context = {
-        'forms': user_forms,
-        'users': users,
         'users_count': users_count,
-        'staff_count': staff_count,
-        'regular_count': regular_count,
-        'user_privs': user_privs,
-        'can_add': can_add,
-        'can_delete': can_delete,
-        'can_edit': can_edit,
+        'new_requests': new_requests,
+        'total_chats': total_chats,
     }
-    
-    if request.method == "POST":
-        action = request.POST.get('action')
-        
-        if action == 'add':
-            if not can_add:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية إضافة شؤون'})
-                
-            username = request.POST.get('username')
-            email = request.POST.get('email')
-            first_name = request.POST.get('first_name')
-            password = request.POST.get('password')
-            user_type = request.POST.get('user_type')
-            checkpoint_toggle = request.POST.get('checkpoint_toggle')
-            discord_id = request.POST.get('discord_id', '')
-            discord_role = request.POST.get('discord_role', 'member')
-            
-            if not username or not email or not first_name or not password:
-                return JsonResponse({'success': False, 'message': 'جميع الحقول مطلوبة'})
-            
-            try:
-                hashed_password = make_password(password)
-                
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT COUNT(*) FROM auth_user WHERE username = %s", [username])
-                    if cursor.fetchone()[0] > 0:
-                        return JsonResponse({'success': False, 'message': 'اسم المستخدم موجود مسبقاً'})
-                    
-                    cursor.execute(
-                        """
-                        INSERT INTO auth_user 
-                        (username, email, first_name, password, date_joined, is_staff, is_superuser, is_active)
-                        VALUES (%s, %s, %s, %s, NOW(), %s, %s, 1)
-                        """,
-                        [username, email, first_name, hashed_password, 
-                         1 if user_type in ['management', 'deputy'] else 0,
-                         1 if user_type == 'deputy' else 0]
-                    )
+    return render(request, 'services/admin_dashboard.html', context)
 
-                    priv_ids = [1, 3, 4, 21]
-                    for priv_id in priv_ids:
-                        cursor.execute(
-                            """
-                            INSERT INTO user_priv (user, priv_id, status)
-                            SELECT id, %s, %s
-                            FROM auth_user
-                            WHERE username = %s
-                            """,
-                            [priv_id, 1, username]
-                        )
-
-                    # تحديث discord_id لو مطلوب
-                    if checkpoint_toggle and discord_id:
-                        cursor.execute(
-                            "UPDATE auth_user SET discord_id = %s WHERE username = %s",
-                            [discord_id, username]
-                        )
-                        
-                        if assign_discord_role:
-                            discord_result = assign_discord_role(discord_id, discord_role, request.user.username)
-                            if not discord_result['success']:
-                                return JsonResponse({'success': False, 'message': f'تم إنشاء المستخدم ولكن فشل إعطاء رتبة الديسكورد: {discord_result["message"]}'})
-                
-                return JsonResponse({'success': True, 'message': 'تم إضافة المستخدم بنجاح!'})
-                
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-        
-        elif action == 'delete':
-            if not can_delete:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية حذف شؤون'})
-                
-            user_id = request.POST.get('user_id')
-            
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT discord_id, is_staff, is_superuser, username FROM auth_user WHERE id = %s", [user_id])
-                    result = cursor.fetchone()
-                    
-                    if not result:
-                        return JsonResponse({'success': False, 'message': 'المستخدم غير موجود'})
-                    
-                    discord_id = result[0] if result and result[0] else None
-                    is_staff = result[1] if result else 0
-                    is_superuser = result[2] if result else 0
-                    username = result[3] if result else ''
-                    
-                    if request.user.username == username:
-                        return JsonResponse({'success': False, 'message': 'لا يمكنك حذف حسابك الخاص'})
-                    
-                    cursor.execute("DELETE FROM auth_user WHERE id = %s", [user_id])
-                    
-                    if discord_id and remove_discord_role:
-                        role_type = 'deputy' if is_superuser else 'management' if is_staff else 'member'
-                        remove_discord_role(discord_id, role_type, request.user.username)
-                
-                return JsonResponse({'success': True, 'message': 'تم حذف المستخدم بنجاح!'})
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-        
-        elif action == 'update':
-            if not can_edit:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية تعديل شؤون'})
-                
-            user_id = request.POST.get('user_id')
-            username = request.POST.get('username')
-            email = request.POST.get('email')
-            first_name = request.POST.get('first_name')
-            discord_id = request.POST.get('discord_id', '')
-            user_type = request.POST.get('user_type')
-            
-            if not username or not email or not first_name:
-                return JsonResponse({'success': False, 'message': 'جميع الحقول مطلوبة'})
-            
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("SELECT COUNT(*) FROM auth_user WHERE username = %s AND id != %s", [username, user_id])
-                    if cursor.fetchone()[0] > 0:
-                        return JsonResponse({'success': False, 'message': 'اسم المستخدم موجود مسبقاً'})
-                    
-                    cursor.execute(
-                        """
-                        UPDATE auth_user 
-                        SET username = %s, email = %s, first_name = %s, discord_id = %s, 
-                            is_staff = %s, is_superuser = %s 
-                        WHERE id = %s
-                        """,
-                        [username, email, first_name, discord_id,
-                         1 if user_type in ['management', 'deputy'] else 0,
-                         1 if user_type == 'deputy' else 0,
-                         user_id]
-                    )
-                    
-                    if discord_id and assign_discord_role:
-                        current_role = 'deputy' if user_type == 'deputy' else 'management' if user_type == 'management' else 'member'
-                        discord_result = assign_discord_role(discord_id, current_role, request.user.username)
-                        if not discord_result['success']:
-                            return JsonResponse({'success': False, 'message': f'تم تحديث المستخدم ولكن فشل تحديث رتبة الديسكورد: {discord_result["message"]}'})
-                
-                return JsonResponse({'success': True, 'message': 'تم تحديث المستخدم بنجاح.'})
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'حدث خطأ أثناء تحديث المستخدم: {str(e)}'})
-    
-    return render(request, "pages/console.html", context)
-
-
-def assign_discord_role(discord_id, role_type, admin_name):
-    BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-    SERVER_ID = os.getenv("DISCORD_SERVER_ID")
-    WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-    
-    role_ids = {
-        'deputy': '1430189316411228182',
-        'management': '1430198706740793416',
-        'member': '1430189364121702541'
-    }
-    
-    role_names = {
-        'deputy': 'Deputy Of Internal Affairs',
-        'management': 'Internal Affairs Management', 
-        'member': 'Internal Affairs Member'
-    }
-    
-    role_id = role_ids.get(role_type)
-    role_name = role_names.get(role_type)
-    
-    if not role_id:
-        return {'success': False, 'message': 'نوع الرتبة غير صحيح'}
-    
-    headers = {
-        "Authorization": f"Bot {BOT_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        guild_url = f"https://discord.com/api/v10/guilds/{SERVER_ID}"
-        guild_response = requests.get(guild_url, headers=headers)
-        if guild_response.status_code != 200:
-            return {'success': False, 'message': 'البوت لا يستطيع الوصول للسيرفر'}
-        
-        role_url = f"https://discord.com/api/v10/guilds/{SERVER_ID}/members/{discord_id}/roles/{role_id}"
-        role_response = requests.put(role_url, headers=headers)
-        
-        print(f"Discord API Response: {role_response.status_code}")
-        
-        if role_response.status_code == 204:
-            current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-            
-            log_data = {
-                "embeds": [{
-                    "title": "📋 سجل منح الرتب",
-                    "color": 3066993,
-                    "fields": [
-                        {"name": "المسؤول", "value": admin_name, "inline": True},
-                        {"name": "العضو", "value": f"<@{discord_id}>", "inline": True},
-                        {"name": "الرتبة", "value": role_name, "inline": True},
-                        {"name": "⏰ الوقت", "value": current_time, "inline": False}
-                    ],
-                    "footer": {"text": "Internal Affairs"}
-                }]
-            }
-            
-            webhook_response = requests.post(WEBHOOK_URL, json=log_data)
-            print(f"Webhook Response: {webhook_response.status_code}")
-            
-            return {'success': True, 'message': 'تم منح رتبة الديسكورد بنجاح'}
-        else:
-            error_data = role_response.json()
-            error_msg = error_data.get('message', 'خطأ غير معروف')
-            return {'success': False, 'message': f'فشل منح الرتبة: {error_msg}'}
-            
-    except Exception as e:
-        print(f"Error in assign_discord_role: {str(e)}")
-        return {'success': False, 'message': f'حدث خطأ: {str(e)}'}
-
-def remove_discord_role(discord_id, role_type, admin_name):
-    BOT_TOKEN = os.getenv("DISCORD_BOT_TOKEN")
-    SERVER_ID = os.getenv("DISCORD_SERVER_ID")
-    WEBHOOK_URL = os.getenv("DISCORD_WEBHOOK_URL")
-    
-    role_ids = {
-        'deputy': '1430189316411228182',
-        'management': '1430198706740793416',
-        'member': '1430189364121702541'
-    }
-    
-    role_names = {
-        'deputy': 'Deputy Of Internal Affairs',
-        'management': 'Internal Affairs Management', 
-        'member': 'Internal Affairs Member'
-    }
-    
-    role_id = role_ids.get(role_type)
-    role_name = role_names.get(role_type)
-    
-    if not role_id:
-        return {'success': False, 'message': 'نوع الرتبة غير صحيح'}
-    
-    headers = {
-        "Authorization": f"Bot {BOT_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    
-    try:
-        guild_url = f"https://discord.com/api/v10/guilds/{SERVER_ID}"
-        guild_response = requests.get(guild_url, headers=headers)
-        if guild_response.status_code != 200:
-            return {'success': False, 'message': 'البوت لا يستطيع الوصول للسيرفر'}
-        
-        role_url = f"https://discord.com/api/v10/guilds/{SERVER_ID}/members/{discord_id}/roles/{role_id}"
-        role_response = requests.delete(role_url, headers=headers)
-        
-        print(f"Discord API Response: {role_response.status_code}")
-        
-        if role_response.status_code == 204:
-            current_time = datetime.now().strftime("%Y-%m-%d %I:%M %p")
-            
-            log_data = {
-                "embeds": [{
-                    "title": "📋 سجل سحب الرتب",
-                    "color": 15158332,
-                    "fields": [
-                        {"name": "المسؤول", "value": admin_name, "inline": True},
-                        {"name": "العضو", "value": f"<@{discord_id}>", "inline": True},
-                        {"name": "الرتبة", "value": role_name, "inline": True},
-                        {"name": "⏰ الوقت", "value": current_time, "inline": False}
-                    ],
-                    "footer": {"text": "Internal Affairs"}
-                }]
-            }
-            
-            webhook_response = requests.post(WEBHOOK_URL, json=log_data)
-            print(f"Webhook Response: {webhook_response.status_code}")
-            
-            return {'success': True, 'message': 'تم سحب رتبة الديسكورد بنجاح'}
-        else:
-            error_data = role_response.json()
-            error_msg = error_data.get('message', 'خطأ غير معروف')
-            return {'success': False, 'message': f'فشل سحب الرتبة: {error_msg}'}
-            
-    except Exception as e:
-        print(f"Error in remove_discord_role: {str(e)}")
-        return {'success': False, 'message': f'حدث خطأ: {str(e)}'}
-
-@login_required(login_url='ialogin')
-def statistics(request):
-    user_privs = get_detailed_privileges(request.user.id, 'النقاط')
-    
-    if user_privs.get('الوصول', 0) != 1:
-        return render(request, "pages/access_denied.html")
-
-    user_forms = get_user_forms(request.user.id)
-    
+@admin_required
+def admin_users(request):
+    """إدارة المستخدمين"""
     with connection.cursor() as cursor:
-        cursor.execute("SELECT points FROM auth_user WHERE id = %s", [request.user.id])
-        result = cursor.fetchone()
-        user_points = result[0] if result else 0
-        
+        # تم تعديل الاستعلام: أزلنا WHERE u.is_active = TRUE
+        # لنظهر المستخدمين النشطين والموقوفين (ولكن ليس المحذوفين تماماً إذا أضفنا شرطاً لذلك)
+        # حالياً سنظهر الجميع عدا من تم أرشفتهم
         cursor.execute("""
-            SELECT COUNT(*) + 1 FROM auth_user 
-            WHERE points > (SELECT points FROM auth_user WHERE id = %s)
-        """, [request.user.id])
-        result = cursor.fetchone()
-        user_rank = result[0] if result else 1
-        
-        cursor.execute("SELECT COUNT(*) FROM auth_user")
-        result = cursor.fetchone()
-        total_users = result[0] if result else 0
-        
-        cursor.execute("SELECT id, username, points FROM auth_user ORDER BY points DESC")
-        columns = [col[0] for col in cursor.description]
-        all_users = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            SELECT u.id, u.username, u.email, u.is_active, u.first_name, up.role 
+            FROM auth_user u 
+            LEFT JOIN evreyting_userprofile up ON u.id = up.user_id
+            WHERE u.username NOT LIKE '%_archived_%'
+            ORDER BY u.id DESC
+        """)
+        users = dictfetchall(cursor)
 
-    if request.method == "POST":
-        action = request.POST.get('action')
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        role = request.POST.get('role', 'client')
         
-        if action == 'update_points':
-            operation_type = request.POST.get('operation_type')
-            user_id = request.POST.get('user_id')
-            points = int(request.POST.get('points', 0))
-            reason = request.POST.get('reason', '')
-            
-            if operation_type  == 'add' and user_privs.get('منح نقاط', 0) != 1:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية منح النقاط'})
-            elif operation_type == 'subtract' and user_privs.get('خصم نقاط', 0) != 1:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية خصم النقاط'})
-            elif operation_type == 'decrease' and user_privs.get('تصغير نقاط', 0) != 1:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية تصغير النقاط'})
-            
+        if username and password:
             try:
+                user = User.objects.create_user(username=username, email=email, password=password)
                 with connection.cursor() as cursor:
-                    if operation_type == 'add':
-                        cursor.execute("UPDATE auth_user SET points = points + %s WHERE id = %s", [points, user_id])
-                        action_text = "إضافة"
-                    elif operation_type == 'subtract':
-                        cursor.execute("UPDATE auth_user SET points = points - %s WHERE id = %s", [points, user_id])
-                        action_text = "خصم"
-                    elif operation_type == 'decrease':
-                        cursor.execute("UPDATE auth_user SET points = points - %s WHERE id = %s", [points, user_id])
-                        action_text = "تصغير"
+                    cursor.execute("INSERT INTO evreyting_userprofile (user_id, role) VALUES (%s, %s)", [user.id, role])
+                messages.success(request, 'تم إنشاء المستخدم بنجاح')
+                return redirect('services:admin_users')
+
+            except IntegrityError:
+                try:
+                    old_user = User.objects.get(username=username)
                     
-                    cursor.execute("SELECT username FROM auth_user WHERE id = %s", [user_id])
-                    username_result = cursor.fetchone()
-                    username = username_result[0] if username_result else "مستخدم"
-                    
-                return JsonResponse({
-                    'success': True, 
-                    'message': f'تم {action_text} {points} نقطة للمستخدم {username} بنجاح'
-                })
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-        
-        elif action == 'reset_points':
-            if user_privs.get('تصفير نقاط', 0) != 1:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية تصفير النقاط'})
+                    if not old_user.is_active:
+                        # إذا كان الاسم لمستخدم محذوف سابقاً، نغير اسمه ونحرر الاسم الجديد
+                        old_user.username = f"{username}_archived_{old_user.id}"
+                        old_user.save()
+                        
+                        user = User.objects.create_user(username=username, email=email, password=password)
+                        with connection.cursor() as cursor:
+                            cursor.execute("INSERT INTO evreyting_userprofile (user_id, role) VALUES (%s, %s)", [user.id, role])
+                        
+                        messages.success(request, 'تم إنشاء المستخدم بنجاح (تم تحرير الاسم من حساب مؤرشف)')
+                        return redirect('services:admin_users')
+                    else:
+                        messages.error(request, 'اسم المستخدم موجود مسبقاً ومستخدم حالياً')
                 
-            user_id = request.POST.get('user_id')
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute("UPDATE auth_user SET points = 0 WHERE id = %s", [user_id])
-                    cursor.execute("SELECT username FROM auth_user WHERE id = %s", [user_id])
-                    username_result = cursor.fetchone()
-                    username = username_result[0] if username_result else "مستخدم"
-                
-                return JsonResponse({
-                    'success': True, 
-                    'message': f'تم تصفير نقاط المستخدم {username} بنجاح'
-                })
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'حدث خطأ: {str(e)}'})
-        
-        elif action == 'bulk_points':
-            bulk_operation = request.POST.get('bulk_operation')
-            bulk_reason = request.POST.get('bulk_reason', '')
-            
-            # التحقق من الصلاحيات
-            if bulk_operation == 'add_all' and user_privs.get('منح نقاط', 0) != 1:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية منح النقاط'})
-            elif bulk_operation == 'reset_all' and user_privs.get('تصفير نقاط', 0) != 1:
-                return JsonResponse({'success': False, 'message': 'لا تملك صلاحية تصفير النقاط'})
-            
-            try:
-                with connection.cursor() as cursor:
-                    if bulk_operation == 'add_all':
-                        bulk_points = int(request.POST.get('bulk_points', 0))
-                        cursor.execute("UPDATE auth_user SET points = points + %s", [bulk_points])
-                        action_text = f"إضافة {bulk_points} نقطة للجميع"
-                    elif bulk_operation == 'reset_all':
-                        cursor.execute("UPDATE auth_user SET points = 0")
-                        action_text = "تصفير نقاط الجميع"
-                    
-                return JsonResponse({
-                    'success': True, 
-                    'message': f'تم {action_text} بنجاح'
-                })
-            except Exception as e:
-                return JsonResponse({'success': False, 'message': f'حدث خطأ: {str(e)}'})
+                except Exception as e:
+                    messages.error(request, f'حدث خطأ غير متوقع: {str(e)}')
 
-    context = {
-        'user_points': user_points,
-        'user_rank': user_rank,
-        'total_users': total_users,
-        'all_users': all_users,
-        'forms': user_forms,
-        'user_privs': user_privs,
-        'can_give_points': user_privs.get('منح نقاط', 0) == 1,
-        'can_rem_points': user_privs.get('خصم نقاط', 0) == 1,
-        'can_decrease_points': user_privs.get('تصغير نقاط', 0) == 1,
-        'can_reset_points': user_privs.get('تصفير نقاط', 0) == 1,
-        'can_bulk_actions': user_privs.get('زر إجراءات جماعية', 0) == 1,
-        'can_remove_everyone': user_privs.get('تصفير الجميع', 0) == 1,
-        'can_add_everyone': user_privs.get('إضافة للجميع', 0) == 1,
-    }
-    
-    return render(request, "pages/statistics.html", context)
+    context = {'users': users}
+    return render(request, 'services/admin_users.html', context)
 
-@login_required(login_url='ialogin')
-def user_privileges_list(request):
-    user_privs = get_detailed_privileges(request.user.id, 'الإدارة')
+@admin_required
+def admin_edit_user(request, user_id):
+    """تعديل بيانات مستخدم"""
     
-    if user_privs.get('الوصول', 0) != 1:
-        return render(request, "pages/access_denied.html")
+    # منع التعديل على النفس
+    if request.user.id == user_id:
+        messages.error(request, 'لا يمكنك تعديل بيانات حسابك الخاص من هنا!')
+        return redirect('services:admin_users')
 
-    query = """
-        SELECT
-            au.id,
-            au.username,
-            au.email,
-            COALESCE(COUNT(up.priv_id), 0) AS privilege_count
-        FROM
-            auth_user au
-        LEFT JOIN
-            iaproject.user_priv up ON au.id = up.user AND up.status = 1
-        GROUP BY
-            au.id, au.username, au.email
-        ORDER BY
-            au.id
-    """
-    
+    # جلب البيانات الحالية
     with connection.cursor() as cursor:
-        cursor.execute(query)
-        columns = [col[0] for col in cursor.description]
-        users = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        cursor.execute("""
+            SELECT u.username, u.email, u.first_name, u.is_staff, up.role, up.phone
+            FROM auth_user u
+            LEFT JOIN evreyting_userprofile up ON u.id = up.user_id
+            WHERE u.id = %s
+        """, [user_id])
+        user_data = cursor.fetchone()
 
-    user_forms = get_user_forms(request.user.id)
-    
+    if not user_data:
+        messages.error(request, 'المستخدم غير موجود')
+        return redirect('services:admin_users')
+
+    # تجهيز البيانات للقالب
     context = {
-        'users': users,
-        'forms': user_forms,
-        'user_privs': user_privs,
-        'can_manage': user_privs.get('إدارة', 0) == 1,
+        'user_id': user_id,
+        'username': user_data[0],
+        'email': user_data[1],
+        'first_name': user_data[2] or '',
+        'is_staff': user_data[3],
+        'role': user_data[4] or 'client',
+        'phone': user_data[5] or '',
     }
-    return render(request, "pages/user_list.html", context)
 
-@login_required(login_url='ialogin')
-def manage_privileges(request, user_id):
-    user_privs = get_detailed_privileges(request.user.id, 'الإدارة')
-    
-    if user_privs.get('الوصول', 0) != 1 or user_privs.get('إدارة', 0) != 1:
-        return render(request, "pages/access_denied.html")
-
-    if request.method == 'GET':
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT form_id, form_name, title FROM iaproject.forms")
-            forms = cursor.fetchall()
-            
-            permissions_data = []
-            
-            for form in forms:
-                form_id, form_name, title = form
-                
-                cursor.execute("""
-                    SELECT DISTINCT p.priv_id, p.priv_name, 
-                           CASE WHEN up.status IS NULL THEN 0 ELSE up.status END as has_permission
-                    FROM iaproject.privilage p
-                    LEFT JOIN iaproject.user_priv up ON p.priv_id = up.priv_id AND up.user = %s
-                    WHERE p.form_id = %s
-                    ORDER BY p.priv_id
-                """, [user_id, form_id])
-                
-                form_permissions = cursor.fetchall()
-                
-                if form_permissions:
-                    permissions_data.append({
-                        'form_id': form_id,
-                        'form_name': form_name,
-                        'title': title,
-                        'permissions': [
-                            {
-                                'priv_id': perm[0],
-                                'priv_name': perm[1],
-                                'has_permission': bool(perm[2])
-                            }
-                            for perm in form_permissions
-                        ]
-                    })
-            
-            cursor.execute("SELECT id, username FROM auth_user WHERE id = %s", [user_id])
-            user = cursor.fetchone()
-        
-        user_forms = get_user_forms(request.user.id)
-        
-        context = {
-            'user_to_manage': {'id': user[0], 'username': user[1]} if user else None,
-            'permissions_data': permissions_data,
-            'forms': user_forms,
-            'user_privs': user_privs,
-            'can_manage': user_privs.get('إدارة', 0) == 1,
-        }
-        return render(request, "pages/manage_privileges.html", context)
-
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-def update_privilege(request):
-    user_privs = get_detailed_privileges(request.user.id, 'الإدارة')
-    
-    if user_privs.get('إدارة', 0) != 1:
-        return JsonResponse({'success': False, 'message': 'لا تملك صلاحية إدارة الصلاحيات.'})
-    
-    try:
-        data = json.loads(request.body)
-        user_id = data.get('user_id')
-        priv_id = data.get('priv_id')
-        is_checked = data.get('is_checked')
-        
-        if not all([user_id, priv_id]):
-            return JsonResponse({'success': False, 'message': 'بيانات غير كاملة.'}, status=400)
+    if request.method == 'POST':
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        first_name = request.POST.get('first_name', '')
+        role = request.POST.get('role')
+        phone = request.POST.get('phone', '')
+        new_password = request.POST.get('password')
 
         try:
+            # 1. تحديث جدول auth_user
+            user = User.objects.get(id=user_id)
+            user.username = username
+            user.email = email
+            user.first_name = first_name
+            
+            if new_password: # إذا تم إدخال كلمة مرور جديدة
+                user.password = make_password(new_password)
+            
+            # محاولة الحفظ مع معالجة تكرار الاسم
+            try:
+                user.save()
+            except IntegrityError:
+                # الاسم مكرر، نتحقق من صاحب الاسم الآخر
+                try:
+                    other_user = User.objects.get(username=username)
+                    
+                    if not other_user.is_active:
+                        # المستخدم الآخر محذوف (معطل)، نغير اسمه ونحرر الاسم الحالي
+                        other_user.username = f"{username}_archived_{other_user.id}"
+                        other_user.save()
+                        user.save() # نحاول حفظ المستخدم الحالي مرة أخرى
+                        messages.success(request, 'تم تحديث الاسم (تم تحريره من حساب محذوف سابق)')
+                    else:
+                        # المستخدم الآخر نشط ومستخدم حالياً
+                        messages.error(request, 'اسم المستخدم موجود مسبقاً ومستخدم حالياً')
+                        return render(request, 'services/admin_edit_user.html', context)
+                        
+                except User.DoesNotExist:
+                    # حالة نادرة، نحاول الحفظ مباشرة
+                    user.save()
+
+            # 2. تحديث جدول evreyting_userprofile باستخدام SQL
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    SELECT COUNT(*) FROM iaproject.user_priv 
-                    WHERE user = %s AND priv_id = %s
-                """, [user_id, priv_id])
+                    UPDATE evreyting_userprofile 
+                    SET role = %s, phone = %s 
+                    WHERE user_id = %s
+                """, [role, phone, user_id])
                 
-                exists = cursor.fetchone()[0] > 0
-                
-                if exists:
+                # إذا لم يتم تحديث أي صف (ليس له بروفايل)، ننشئ واحد جديد
+                if cursor.rowcount == 0:
                     cursor.execute("""
-                        UPDATE iaproject.user_priv 
-                        SET status = %s 
-                        WHERE user = %s AND priv_id = %s
-                    """, [1 if is_checked else 0, user_id, priv_id])
-                else:
-                    cursor.execute("""
-                        INSERT INTO iaproject.user_priv (user, priv_id, status)
+                        INSERT INTO evreyting_userprofile (user_id, role, phone) 
                         VALUES (%s, %s, %s)
-                    """, [user_id, priv_id, 1 if is_checked else 0])
-                
-                return JsonResponse({'success': True, 'message': 'تم تحديث الصلاحية بنجاح'})
-                
+                    """, [user_id, role, phone])
+
+            messages.success(request, 'تم تحديث بيانات المستخدم بنجاح')
+            return redirect('services:admin_users')
+            
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'خطأ في قاعدة البيانات: {str(e)}'})
+            messages.error(request, f'حدث خطأ: {str(e)}')
 
-    except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'message': 'صيغة JSON غير صالحة.'}, status=400)
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'خطأ: {str(e)}'}, status=500)
+    return render(request, 'services/admin_edit_user.html', context)
 
-def check_user_permission(request):
-    if request.user.is_authenticated:
-        user_id = request.user.id
-        priv_id = request.GET.get('priv_id')
-        
-        with connection.cursor() as cursor:
-            cursor.execute("""
-                SELECT status FROM iaproject.user_priv 
-                WHERE user = %s AND priv_id = %s AND status = 1
-            """, [user_id, priv_id])
-            
-            has_permission = cursor.fetchone() is not None
-            
-        return JsonResponse({'has_permission': has_permission})
+@admin_required
+def admin_delete_user(request, user_id):
+    """حذف المستخدم نهائياً (إيقاف دخول + إخفاء ملف + حذف أعمال + إخفاء من قائمة الأدمن)"""
     
-    return JsonResponse({'has_permission': False})
-
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-def soft_delete_report(request, report_id):
-    user_privs = get_detailed_privileges(request.user.id, 'البلاغات')
-    
-    if user_privs.get('الحذف', 0) != 1:
-        return JsonResponse({'success': False, 'message': 'لا تملك صلاحية حذف البلاغات.'})
+    if request.user.id == user_id:
+        messages.error(request, 'لا يمكنك حذف حسابك الخاص!')
+        return redirect('services:admin_users')
     
     try:
+        # نجلب بيانات المستخدم أولاً لمعرفة اسمه
+        user = User.objects.get(id=user_id)
+        current_username = user.username
+        
         with connection.cursor() as cursor:
-            cursor.execute("SELECT id FROM reports WHERE id = %s AND perm = 0", [report_id])
-            report_exists = cursor.fetchone()
+            # 1. تعطيل الحساب وتغيير الاسم ليصبح "مؤرشف" (ليختفي من قائمة الأدمن)
+            # تغيير الاسم يحقق هدفين: يختفي من القائمة، ويحرر الاسم للتسجيل به مجدداً
+            new_archived_name = f"{current_username}_archived_{user_id}"
+            cursor.execute("UPDATE auth_user SET is_active = FALSE, username = %s WHERE id = %s", [new_archived_name, user_id])
             
-            if not report_exists:
-                return JsonResponse({'success': False, 'message': 'البلاغ غير موجود أو محذوف نهائياً.'})
+            # 2. إخفاء الملف الشخصي من قوالب الموقع
+            tables_to_hide = [
+                'evreyting_model', 
+                'evreyting_contentcreator', 
+                'evreyting_videoproduction', 
+                'evreyting_voiceartist', 
+                'evreyting_contentwriting'
+            ]
+            for table in tables_to_hide:
+                cursor.execute(f"UPDATE {table} SET is_active = FALSE WHERE user_id = %s", [user_id])
             
-            cursor.execute(
-                "UPDATE reports SET is_deleted = 1 WHERE id = %s AND perm = 0", 
-                [report_id]
-            )
-            
-        return JsonResponse({'success': True, 'message': 'تم حذف البلاغ بنجاح.'})
+            # 3. حذف الأعمال من المعرض
+            cursor.execute("DELETE FROM evreyting_portfolio WHERE user_id = %s", [user_id])
+        
+        messages.success(request, 'تم حذف المستخدم وتصفية حسابه بالكامل')
     except Exception as e:
-        return JsonResponse({'success': False, 'message': f'حدث خطأ أثناء حذف البلاغ: {str(e)}'})
+        messages.error(request, f'حدث خطأ أثناء الحذف: {str(e)}')
+        
+    return redirect('services:admin_users')
 
-@login_required(login_url='ialogin')
-def iareport(request):
-    user_privs = get_detailed_privileges(request.user.id, 'البلاغات')
-    
-    if user_privs.get('الوصول', 0) != 1:
-        return render(request, "pages/access_denied.html")
+@admin_required
+def admin_toggle_user(request, user_id):
+    """إيقاف / تفعيل المستخدم (مؤقتاً - بدون حذف البيانات)"""
+    if request.method == 'POST':
+        try:
+            user = User.objects.get(id=user_id)
+            
+            # تغيير حالة التفعيل فقط
+            user.is_active = not user.is_active
+            user.save()
+            
+            status = "تفعيل" if user.is_active else "إيقاف"
+            messages.success(request, f'تم {status} الحساب بنجاح. يمكن للمستخدم الدخول الآن.' if user.is_active else f'تم إيقاف الحساب. لن يتمكن المستخدم من الدخول.')
+            
+        except User.DoesNotExist:
+            messages.error(request, 'المستخدم غير موجود')
+            
+    return redirect('services:admin_users')
 
+@admin_required
+def admin_messages(request):
     with connection.cursor() as cursor:
-        active_query = """
-            SELECT 
-                r.id, r.name, r.content, r.evidence_url, r.status, r.is_deleted, r.perm,
-                u.username as closed_by_username
-            FROM 
-                reports r
-            LEFT JOIN 
-                auth_user u ON r.closed_by_id = u.id
-            WHERE r.is_deleted = 0 AND r.perm = 0    
-            ORDER BY 
-                r.status ASC, r.id DESC
-        """
-        cursor.execute(active_query)
-        columns = [col[0] for col in cursor.description]
-        active_reports = [dict(zip(columns, row)) for row in cursor.fetchall()]
-        
-        deleted_reports = []
-        deleted_reports_count = 0
-        if user_privs.get('عرض المحذوفه', 0) == 1:
-            deleted_query = """
-                SELECT 
-                    r.id, r.name, r.content, r.evidence_url, r.status, r.is_deleted, r.perm,
-                    u.username as closed_by_username
-                FROM 
-                    reports r
-                LEFT JOIN 
-                    auth_user u ON r.closed_by_id = u.id
-                WHERE r.is_deleted = 1 AND r.perm = 0    
-                ORDER BY r.id DESC
-            """
-            cursor.execute(deleted_query)
-            deleted_reports = [dict(zip(columns, row)) for row in cursor.fetchall()]
-            deleted_reports_count = len(deleted_reports)
-        
-        pending_count = len([r for r in active_reports if r['status'] == 0])
-        completed_count = len([r for r in active_reports if r['status'] == 1])
-        active_count = len(active_reports)
-        
-    user_forms = get_user_forms(request.user.id)
+        cursor.execute("SELECT * FROM evreyting_contactmessage ORDER BY created_at DESC")
+        messages_list = dictfetchall(cursor)
+    return render(request, 'services/admin_messages.html', {'messages_list': messages_list})
 
-    context = {
-        'reports': active_reports + deleted_reports,
-        'active_reports_count': active_count,
-        'pending_reports_count': pending_count,
-        'completed_reports_count': completed_count,
-        'deleted_reports_count': deleted_reports_count,
-        'forms': user_forms,
-        'user_privs': user_privs,
-        'can_handle': user_privs.get('التعامل', 0) == 1,
-        'can_delete_report': user_privs.get('الحذف', 0) == 1,
-        'can_view_deleted': user_privs.get('عرض المحذوفه', 0) == 1,
-        'can_restore': user_privs.get('إستعادة بلاغ', 0) == 1,
-        'can_see': user_privs.get('مشاهدة الدلائل', 0) == 1,
-        'can_permanent_delete': user_privs.get('حذف نهائي', 0) == 1,
-    }
-    
-    if request.method == "POST":
-        report_id = request.POST.get('report_id')
-        
-        if 'mark_done' in request.POST:
-            if user_privs.get('التعامل', 0) != 1:
-                messages.error(request, 'لا تملك صلاحية التعامل مع البلاغات.')
-                return redirect('iareport')
-                
-            current_user_id = request.user.id 
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE reports SET status = TRUE, closed_by_id = %s WHERE id = %s AND is_deleted = 0 AND perm = 0", 
-                    [current_user_id, report_id]
-                )
-                cursor.execute(
-                    "UPDATE auth_user SET points = points + 5 WHERE id = %s", 
-                    [current_user_id]
-                )
-            messages.success(request, 'تم التعامل مع أخر بلاغ  .')
-            return redirect('iareport')
-            
-        elif 'delete_report' in request.POST:
-            if user_privs.get('الحذف', 0) != 1:
-                messages.error(request, 'لا تملك صلاحية حذف البلاغات.')
-                return redirect('iareport')
-                
-            try:
-                with connection.cursor() as cursor:
-                    cursor.execute(
-                        "UPDATE reports SET is_deleted = 1 WHERE id = %s AND perm = 0", 
-                        [report_id]
-                    )
-                messages.success(request, 'تم حذف البلاغ بنجاح.')
-            except Exception as e:
-                messages.error(request, f'حدث خطأ أثناء حذف البلاغ: {str(e)}')
-            return redirect('iareport')
-    
-    return render(request, "pages/reports.html", context)
-
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-@login_required(login_url='ialogin')
-@require_http_methods(["POST"])
-@csrf_exempt
-def restore_report(request, report_id):
-    user_privs = get_detailed_privileges(request.user.id, 'البلاغات')
-    
-    if user_privs.get('إستعادة بلاغ', 0) != 1:
-        return JsonResponse({'success': False, 'message': 'لا تملك صلاحية استعادة البلاغات.'})
-    
-    try:
+@admin_required
+def admin_portfolio(request):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_siteportfolio ORDER BY created_at DESC")
+        items = dictfetchall(cursor)
+    if request.method == 'POST':
+        title = request.POST.get('title')
+        media_type = request.POST.get('media_type')
+        media_url = request.POST.get('media_url')
         with connection.cursor() as cursor:
-            cursor.execute("SELECT id FROM reports WHERE id = %s AND perm = 0", [report_id])
-            report_exists = cursor.fetchone()
-            
-            if not report_exists:
-                return JsonResponse({'success': False, 'message': 'البلاغ غير موجود أو محذوف نهائياً.'})
-            
-            cursor.execute(
-                "UPDATE reports SET is_deleted = 0 WHERE id = %s AND perm = 0", 
-                [report_id]
-            )
-        return JsonResponse({'success': True, 'message': 'تم استعادة البلاغ بنجاح.'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': f'حدث خطأ أثناء استعادة البلاغ: {str(e)}'})
+            cursor.execute("INSERT INTO evreyting_siteportfolio (title, media_type, media_url) VALUES (%s, %s, %s)", [title, media_type, media_url])
+        messages.success(request, 'تمت إضافة العمل بنجاح')
+        return redirect('services:admin_portfolio')
+    return render(request, 'services/admin_portfolio.html', {'items': items})
+
+@admin_required
+def admin_delete_portfolio(request, item_id):
+    with connection.cursor() as cursor:
+        cursor.execute("DELETE FROM evreyting_siteportfolio WHERE id = %s", [item_id])
+    messages.success(request, 'تم حذف العمل')
+    return redirect('services:admin_portfolio')
+
+@admin_required
+def admin_requests(request):
+    with connection.cursor() as cursor:
+        query = "SELECT cr.id, cr.client_id, cr.provider_id, cr.status, cr.created_at, cm.content as last_message, cm.created_at as last_message_time, u1.username as client_name, u2.username as provider_name FROM evreyting_chatroom cr LEFT JOIN evreyting_chatmessage cm ON cr.id = cm.room_id AND cm.id = (SELECT MAX(id) FROM evreyting_chatmessage WHERE room_id = cr.id) LEFT JOIN auth_user u1 ON cr.client_id = u1.id LEFT JOIN auth_user u2 ON cr.provider_id = u2.id ORDER BY COALESCE(cm.created_at, cr.created_at) DESC"
+        cursor.execute(query)
+        chats = dictfetchall(cursor)
+    return render(request, 'services/admin_requests.html', {'chats': chats})
+
+@admin_required
+def admin_chat_view(request, room_id):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT cr.*, u1.username as client_name, u2.username as provider_name FROM evreyting_chatroom cr LEFT JOIN auth_user u1 ON cr.client_id = u1.id LEFT JOIN auth_user u2 ON cr.provider_id = u2.id WHERE cr.id = %s", [room_id])
+        room_data = dictfetchall(cursor)
+        if not room_data: return redirect('services:admin_requests')
+        room = room_data[0]
+
+        cursor.execute("SELECT cm.*, u.username as sender_name, up.role as sender_role FROM evreyting_chatmessage cm LEFT JOIN auth_user u ON cm.sender_id = u.id LEFT JOIN evreyting_userprofile up ON cm.sender_id = up.user_id WHERE cm.room_id = %s ORDER BY cm.created_at ASC", [room_id])
+        messages = dictfetchall(cursor)
+        last_id = messages[-1]['id'] if messages else 0
+
+    context = {'room': room, 'messages': messages, 'last_id': last_id, 'current_user_id': request.user.id}
+    return render(request, 'services/admin_chat_view.html', context)
+
+@admin_required
+def admin_send_message(request):
+    if request.method == 'POST' and request.user.is_authenticated:
+        room_id = request.POST.get('room_id')
+        content = request.POST.get('content')
+        if content:
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO evreyting_chatmessage (room_id, sender_id, content, status) VALUES (%s, %s, %s, 'sent')", [room_id, request.user.id, content])
+                new_id = cursor.lastrowid
+            return JsonResponse({'status': 'success', 'message_id': new_id})
+    return JsonResponse({'status': 'error'})
+
+# === إدارة البنرات ===
+@admin_required
+def admin_banners(request):
+    """إدارة البنرات"""
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM evreyting_banner ORDER BY id DESC")
+        banners = dictfetchall(cursor)
     
-@login_required(login_url='ialogin')
-def home(request):
+    if request.method == 'POST':
+        title = request.POST.get('title', '')
+        image_url = request.POST.get('image_url')
+        link_url = request.POST.get('link_url', '#')
+        
+        if image_url:
+            with connection.cursor() as cursor:
+                cursor.execute("INSERT INTO evreyting_banner (title, image_url, link_url, is_active) VALUES (%s, %s, %s, 1)", [title, image_url, link_url])
+            messages.success(request, 'تمت إضافة البنر بنجاح')
+            return redirect('services:admin_banners')
+            
+    return render(request, 'services/admin_banners.html', {'banners': banners})
 
-    user_forms = get_user_forms(request.user.id)
- 
+@admin_required
+def admin_toggle_banner(request, banner_id):
+    with connection.cursor() as cursor:
+        cursor.execute("UPDATE evreyting_banner SET is_active = NOT is_active WHERE id = %s", [banner_id])
+    messages.success(request, 'تم تحديث حالة البنر')
+    return redirect('services:admin_banners')
+
+@admin_required
+def admin_delete_banner(request, banner_id):
+    with connection.cursor() as cursor:
+        cursor.execute("DELETE FROM evreyting_banner WHERE id = %s", [banner_id])
+    messages.success(request, 'تم حذف البنر')
+    return redirect('services:admin_banners')
+
+# === لوحة تحكم الأدمن لمستخدم محدد ===
+@admin_required
+def admin_user_panel(request, user_id):
+    """
+    هذه الدالة تتيح للأدمن الدخول على لوحة تحكم المستخدم
+    وعرض بياناته (مثل لوحة تحكم المودل/الصانع) والتحكم فيها.
+    """
+    try:
+        target_user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        messages.error(request, "المستخدم غير موجود")
+        return redirect('services:admin_users')
+
+    role = get_user_role(user_id)
+    profile_data = None
+    
+    with connection.cursor() as cursor:
+        # جلب البيانات حسب الدور
+        if role == 'model':
+            cursor.execute("SELECT * FROM evreyting_model WHERE user_id = %s", [user_id])
+            data = dictfetchall(cursor)
+            profile_data = data[0] if data else None
+            template_name = 'services/model_dashboard.html'
+            
+        elif role == 'creator':
+            cursor.execute("SELECT * FROM evreyting_contentcreator WHERE user_id = %s", [user_id])
+            data = dictfetchall(cursor)
+            profile_data = data[0] if data else None
+            template_name = 'services/creator_dashboard.html'
+            
+        # يمكنك إضافة باقي الأدوار هنا...
+        
+        else:
+            # إذا كان عميل أو دور عام، نعرض صفحة بسيطة أو نرجعه للتعديل العادي
+            messages.info(request, "هذا المستخدم ليس لديه لوحة تحكم خاصة (عميل). يمكنك تعديل بياناته الأساسية.")
+            return redirect('services:admin_edit_user', user_id=user_id)
+
+        # جلب معرض الأعمال
+        cursor.execute("SELECT * FROM evreyting_portfolio WHERE user_id = %s ORDER BY created_at DESC", [user_id])
+        portfolio_items = dictfetchall(cursor)
+
     context = {
-         'forms': user_forms,
+        'instance': profile_data,
+        'portfolio_items': portfolio_items,
+        'profile_views': profile_data['views'] if profile_data else 0,
+        'portfolio_count': len(portfolio_items),
+        # متغيرات مهمة للتمييز بين وضع الأدمن والوضع العادي
+        'is_admin_view': True, 
+        'target_user': target_user, 
+        'role': role,
     }
-    return render(request, "pages/home.html", context)
-
-
-def logout_view(request):
-    logout(request)
-    return redirect("ialogin")
+    
+    return render(request, template_name, context)

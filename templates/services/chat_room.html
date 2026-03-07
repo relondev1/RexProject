@@ -1,0 +1,899 @@
+{% extends 'base.html' %}
+
+{% block title %}محادثة مع {{ other_user.username }} - ريكس{% endblock %}
+
+{% block extra_css %}
+<!-- Emoji Picker CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.22.0/css/emoji-picker.css" />
+<style>
+    /* استخدام بادئة ch- لجميع الكلاسات */
+    .ch-page-wrapper {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* أنميشنات محسنة */
+    @keyframes chFadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes chSlideInRight {
+        from { opacity: 0; transform: translateX(50px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes chPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    @keyframes chFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    @keyframes chGlow {
+        0%, 100% { box-shadow: 0 0 5px rgba(255, 189, 89, 0.3); }
+        50% { box-shadow: 0 0 20px rgba(255, 189, 89, 0.6); }
+    }
+
+    /* إخفاء الفوتر لهذه الصفحة فقط */
+    footer {
+        display: none !important;
+    }
+
+    /* ===== حاوية المحادثة ===== */
+    .ch-main-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        max-width: 1200px;
+        width: 100%;
+        margin: 80px auto 0;
+        background: linear-gradient(145deg, var(--bg-light), #1f1f1f);
+        border-radius: 30px 30px 0 0;
+        overflow: hidden;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        height: calc(100vh - 80px);
+        position: relative;
+        border: 1px solid rgba(255,189,89,0.1);
+    }
+
+    /* ===== رأس المحادثة الفاخر ===== */
+    .ch-header-section {
+        background: linear-gradient(135deg, var(--bg-card), #222);
+        padding: 1.2rem 2rem;
+        border-bottom: 2px solid rgba(255, 189, 89, 0.2);
+        display: flex;
+        align-items: center;
+        gap: 1.2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ch-header-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255, 189, 89, 0.05) 0%, transparent 70%);
+        animation: chFloat 10s linear infinite;
+    }
+
+    .ch-back-link {
+        color: var(--text-muted);
+        text-decoration: none;
+        font-size: 1.3rem;
+        width: 45px;
+        height: 45px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        transition: all 0.3s;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid var(--border);
+        position: relative;
+        z-index: 2;
+    }
+
+    .ch-back-link:hover {
+        background: var(--primary);
+        color: #000;
+        transform: translateX(5px);
+        border-color: transparent;
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .ch-avatar-circle {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        border: 3px solid var(--primary);
+        overflow: hidden;
+        box-shadow: 0 0 0 3px rgba(255,189,89,0.2);
+        position: relative;
+        z-index: 2;
+        transition: all 0.3s;
+    }
+
+    .ch-avatar-circle:hover {
+        transform: scale(1.05);
+        box-shadow: 0 0 20px rgba(255,189,89,0.4);
+    }
+
+    .ch-avatar-circle img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .ch-user-details {
+        flex: 1;
+        position: relative;
+        z-index: 2;
+    }
+
+    .ch-user-details h2 {
+        font-size: 1.4rem;
+        color: var(--primary);
+        margin-bottom: 0.2rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .ch-user-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-muted);
+    }
+
+    .ch-status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #2ecc71;
+        box-shadow: 0 0 10px #2ecc71;
+        animation: chPulse 2s infinite;
+    }
+
+    /* ===== منطقة الرسائل ===== */
+    .ch-messages-panel {
+        flex: 1;
+        padding: 2rem;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+        background: linear-gradient(135deg, var(--bg) 0%, var(--bg-light) 100%);
+        position: relative;
+    }
+
+    .ch-messages-panel::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .ch-messages-panel::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    .ch-messages-panel::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    .ch-message-item {
+        display: flex;
+        flex-direction: column;
+        max-width: 70%;
+        animation: chFadeIn 0.3s ease;
+        position: relative;
+    }
+
+    .ch-message-item.sent {
+        align-self: flex-end;
+    }
+
+    .ch-message-item.received {
+        align-self: flex-start;
+    }
+
+    .ch-bubble-content {
+        padding: 0.8rem 1.2rem;
+        border-radius: 18px;
+        word-wrap: break-word;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        line-height: 1.6;
+        font-size: 0.95rem;
+        position: relative;
+        transition: all 0.3s;
+    }
+
+    .ch-message-item.sent .ch-bubble-content {
+        background: linear-gradient(135deg, var(--primary), #ffd27f);
+        color: #000;
+        border-bottom-left-radius: 5px;
+        border-bottom-right-radius: 18px;
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .ch-message-item.received .ch-bubble-content {
+        background: linear-gradient(135deg, var(--bg-card), #2d2d2d);
+        border: 1px solid rgba(255,189,89,0.2);
+        border-bottom-right-radius: 5px;
+        border-bottom-left-radius: 18px;
+    }
+
+    .ch-time-stamp {
+        font-size: 0.7rem;
+        margin-top: 0.3rem;
+        padding: 0 0.5rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+        gap: 0.3rem;
+    }
+
+    .ch-message-item.sent .ch-time-stamp {
+        justify-content: flex-end;
+    }
+
+    .ch-status-indicator {
+        color: var(--primary);
+        font-size: 0.7rem;
+    }
+
+    /* === تنسيق رسالة الأدمن الفاخر (محسن) === */
+    .ch-message-item.admin-received {
+        max-width: 70%;
+        align-self: flex-start;
+        position: relative;
+    }
+
+    .ch-message-item.admin-received .ch-bubble-content {
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: #fff;
+        border: none;
+        border-bottom-right-radius: 5px;
+        border-bottom-left-radius: 18px;
+        box-shadow: 0 8px 20px rgba(44, 62, 80, 0.4);
+        position: relative;
+        overflow: hidden;
+        padding: 1rem 1.4rem;
+        width: fit-content;
+        max-width: 100%;
+        word-wrap: break-word;
+        font-size: 0.95rem;
+        border-left: 3px solid var(--primary);
+    }
+
+    .ch-message-item.admin-received .ch-bubble-content::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, rgba(255,189,89,0.1), transparent);
+        pointer-events: none;
+    }
+
+    .ch-message-item.admin-received .ch-bubble-content::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 50px;
+        height: 50px;
+        background: radial-gradient(circle, rgba(255,189,89,0.2) 0%, transparent 70%);
+        border-radius: 50%;
+        transform: translate(20px, -20px);
+    }
+
+    .ch-admin-badge {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255,189,89,0.3);
+    }
+
+    .ch-admin-icon {
+        width: 24px;
+        height: 24px;
+        background: var(--primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #000;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+
+    .ch-admin-name {
+        color: var(--primary);
+        font-size: 0.8rem;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+    }
+
+    .ch-admin-role {
+        background: rgba(255,189,89,0.15);
+        color: var(--primary);
+        font-size: 0.6rem;
+        font-weight: 600;
+        padding: 0.2rem 0.6rem;
+        border-radius: 30px;
+        margin-right: 0.5rem;
+        border: 1px solid rgba(255,189,89,0.3);
+    }
+
+    .ch-message-item.admin-received .ch-time-stamp {
+        color: rgba(255,255,255,0.6);
+        font-size: 0.65rem;
+        margin-top: 0.3rem;
+        padding: 0 0.5rem;
+    }
+
+    /* ===== منطقة الإدخال الفاخرة ===== */
+    .ch-input-section {
+        background: linear-gradient(145deg, var(--bg-card), #222);
+        border-top: 2px solid rgba(255, 189, 89, 0.2);
+        padding: 1.2rem 2rem;
+        display: flex;
+        gap: 1rem;
+        align-items: center;
+        position: relative;
+    }
+
+    .ch-field-wrapper {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        background: linear-gradient(145deg, var(--bg-light), #1f1f1f);
+        border: 2px solid var(--border);
+        border-radius: 30px;
+        padding: 0.3rem 0.3rem 0.3rem 1.5rem;
+        transition: all 0.3s;
+        box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .ch-field-wrapper:focus-within {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(255,189,89,0.1), inset 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    .ch-field-wrapper input {
+        flex: 1;
+        background: none;
+        border: none;
+        color: var(--text);
+        font-family: 'Cairo';
+        font-size: 1rem;
+        padding: 0.8rem 0;
+        outline: none;
+    }
+
+    .ch-field-wrapper input::placeholder {
+        color: var(--text-muted);
+        font-size: 0.95rem;
+    }
+
+    .ch-emoji-trigger {
+        background: none;
+        border: none;
+        color: var(--text-muted);
+        font-size: 1.3rem;
+        padding: 0.6rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .ch-emoji-trigger:hover {
+        color: var(--primary);
+        transform: scale(1.1) rotate(15deg);
+        background: rgba(255,189,89,0.1);
+    }
+
+    .ch-emoji-panel {
+        position: absolute;
+        bottom: 100%;
+        left: 2rem;
+        margin-bottom: 0.8rem;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border-radius: 20px;
+        overflow: hidden;
+    }
+
+    .ch-emoji-panel.show {
+        display: block;
+        animation: chSlideInRight 0.3s ease;
+    }
+
+    .ch-send-action {
+        background: linear-gradient(135deg, var(--primary), #ffd27f);
+        color: #000;
+        border: none;
+        width: 55px;
+        height: 55px;
+        border-radius: 50%;
+        cursor: pointer;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        box-shadow: 0 5px 20px rgba(255, 189, 89, 0.4);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ch-send-action::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .ch-send-action:hover::before {
+        width: 100px;
+        height: 100px;
+    }
+
+    .ch-send-action:hover {
+        transform: scale(1.1);
+        box-shadow: 0 8px 25px rgba(255, 189, 89, 0.6);
+    }
+
+    .ch-send-action:active {
+        transform: scale(0.95);
+    }
+
+    /* ===== شريط الاقتراحات الفاخر ===== */
+    .ch-suggestions-bar {
+        padding: 0.8rem 2rem 1.2rem;
+        display: flex;
+        gap: 0.8rem;
+        flex-wrap: wrap;
+        background: linear-gradient(145deg, var(--bg-card), #222);
+        border-top: 1px solid rgba(255,189,89,0.1);
+    }
+
+    .ch-suggestion-item {
+        background: rgba(255,255,255,0.03);
+        border: 1px solid var(--border);
+        color: var(--text-muted);
+        padding: 0.5rem 1.2rem;
+        border-radius: 30px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        backdrop-filter: blur(5px);
+    }
+
+    .ch-suggestion-item:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        background: rgba(255,189,89,0.1);
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(255,189,89,0.2);
+    }
+
+    .ch-suggestion-item i {
+        font-size: 0.9rem;
+    }
+
+    /* ===== حالة فارغة فاخرة ===== */
+    .ch-empty-state {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-muted);
+        gap: 1.5rem;
+        padding: 3rem;
+        background: radial-gradient(circle at 50% 50%, rgba(255,189,89,0.05), transparent);
+    }
+
+    .ch-empty-state i {
+        font-size: 5rem;
+        color: var(--primary);
+        opacity: 0.5;
+        animation: chFloat 3s ease-in-out infinite;
+    }
+
+    .ch-empty-state p {
+        font-size: 1.2rem;
+        text-align: center;
+        color: var(--text-light);
+    }
+
+    .ch-empty-state small {
+        color: var(--text-muted);
+        font-size: 0.9rem;
+    }
+
+    /* ===== Responsive ===== */
+    @media (max-width: 768px) {
+        .ch-main-container {
+            margin-top: 70px;
+            height: calc(100vh - 70px);
+            border-radius: 0;
+        }
+
+        .ch-header-section {
+            padding: 0.8rem 1rem;
+        }
+
+        .ch-avatar-circle {
+            width: 45px;
+            height: 45px;
+        }
+
+        .ch-user-details h2 {
+            font-size: 1.2rem;
+        }
+
+        .ch-messages-panel {
+            padding: 1rem;
+        }
+
+        .ch-message-item {
+            max-width: 85%;
+        }
+
+        .ch-message-item.admin-received {
+            max-width: 85%;
+        }
+        
+        .ch-message-item.admin-received .ch-bubble-content {
+            padding: 0.9rem 1.2rem;
+            font-size: 0.9rem;
+        }
+
+        .ch-input-section {
+            padding: 0.8rem 1rem;
+        }
+
+        .ch-suggestions-bar {
+            padding: 0.5rem 1rem;
+            gap: 0.5rem;
+        }
+
+        .ch-suggestion-item {
+            padding: 0.4rem 1rem;
+            font-size: 0.8rem;
+        }
+
+        .ch-send-action {
+            width: 45px;
+            height: 45px;
+            font-size: 1.1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="ch-main-container">
+    <!-- ===== رأس المحادثة الفاخر ===== -->
+    <div class="ch-header-section">
+        <a href="{% url 'services:my_chats' %}" class="ch-back-link">
+            <i class="fas fa-arrow-right"></i>
+        </a>
+        
+        <div class="ch-avatar-circle">
+            <img src="https://ui-avatars.com/api/?name={{ other_user.username }}&background=FFBD59&color=000&size=100" alt="{{ other_user.username }}">
+        </div>
+        
+        <div class="ch-user-details">
+            <h2>
+                {{ other_user.username }}
+                <i class="fas fa-check-circle" style="color: var(--primary); font-size: 0.9rem;"></i>
+            </h2>
+            <div class="ch-user-status">
+                <span class="ch-status-dot"></span>
+                <span>متصل الآن</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== منطقة الرسائل ===== -->
+    <div class="ch-messages-panel" id="chMessagesPanel">
+        {% if messages %}
+            {% for message in messages %}
+                {% if message.sender_id == current_user_id %}
+                    <!-- رسالتي أنا (مرسلة) -->
+                    <div class="ch-message-item sent">
+                        <div class="ch-bubble-content">
+                            {{ message.content }}
+                        </div>
+                        <div class="ch-time-stamp">
+                            <span>{{ message.created_at|date:"h:i A" }}</span>
+                            {% if message.is_read %}
+                                <span class="ch-status-indicator"><i class="fas fa-check-double"></i></span>
+                            {% else %}
+                                <span class="ch-status-indicator"><i class="fas fa-check"></i></span>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <!-- رسالة مستلمة مع تمييز الأدمن -->
+                    <div class="ch-message-item {% if message.sender_role == 'admin' %}admin-received{% else %}received{% endif %}">
+                        <div class="ch-bubble-content">
+                            {% if message.sender_role == 'admin' %}
+                            <div class="ch-admin-badge">
+                                <div class="ch-admin-icon">
+                                    <i class="fas fa-crown" style="font-size: 0.7rem;"></i>
+                                </div>
+                                <span class="ch-admin-name">إدارة ريكس</span>
+                                <span class="ch-admin-role">رسمي</span>
+                            </div>
+                            {% endif %}
+                            {{ message.content }}
+                        </div>
+                        <div class="ch-time-stamp">
+                            <span>{{ message.created_at|date:"h:i A" }}</span>
+                        </div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        {% else %}
+            <!-- حالة فارغة فاخرة -->
+            <div class="ch-empty-state" id="chEmptyState">
+                <i class="fas fa-comment-dots"></i>
+                <p>لا توجد رسائل سابقة</p>
+                <small>ابدأ المحادثة مع {{ other_user.username }} الآن</small>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- ===== شريط الاقتراحات ===== -->
+    <div class="ch-suggestions-bar">
+        <span class="ch-suggestion-item" onclick="chInsertSuggestion('السلام عليكم')">
+            <i class="fas fa-hand-peace"></i> السلام عليكم
+        </span>
+        <span class="ch-suggestion-item" onclick="chInsertSuggestion('كم تكلفة الخدمة؟')">
+            <i class="fas fa-tag"></i> كم التكلفة؟
+        </span>
+        <span class="ch-suggestion-item" onclick="chInsertSuggestion('هل تتوفر لديك؟')">
+            <i class="fas fa-clock"></i> هل تتوفر؟
+        </span>
+        <span class="ch-suggestion-item" onclick="chInsertSuggestion('شكراً لك')">
+            <i class="fas fa-heart"></i> شكراً
+        </span>
+    </div>
+
+    <!-- ===== منطقة الإدخال الفاخرة ===== -->
+    <div class="ch-input-section">
+        <div class="ch-emoji-panel" id="chEmojiPicker">
+            <emoji-picker></emoji-picker>
+        </div>
+
+        <div class="ch-field-wrapper">
+            <input type="text" 
+                   id="chMessageInput" 
+                   placeholder="اكتب رسالتك هنا..."
+                   autocomplete="off">
+            <button class="ch-emoji-trigger" id="chEmojiBtn" type="button">
+                <i class="far fa-smile"></i>
+            </button>
+        </div>
+
+        <button class="ch-send-action" id="chSendBtn" type="button">
+            <i class="fas fa-paper-plane"></i>
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1.22.0/js/index.js" type="module"></script>
+
+<script>
+    (function() {
+        // ===== 1. إعداد المتغيرات =====
+        const messagesPanel = document.getElementById('chMessagesPanel');
+        const messageInput = document.getElementById('chMessageInput');
+        const sendBtn = document.getElementById('chSendBtn');
+        const emojiBtn = document.getElementById('chEmojiBtn');
+        const emojiPicker = document.getElementById('chEmojiPicker');
+        
+        const chatId = {{ room_id }};
+        const currentUserId = {{ current_user_id }};
+        let lastMessageId = {{ last_id|default:0 }}; 
+
+        // التمرير للأسفل
+        function chScrollToBottom() {
+            setTimeout(() => {
+                messagesPanel.scrollTop = messagesPanel.scrollHeight;
+            }, 50);
+        }
+        chScrollToBottom();
+
+        // ===== 2. إضافة رسالة للواجهة =====
+        function chAddMessageToChat(content, type, msgId, role) {
+            if (msgId && msgId > lastMessageId) {
+                lastMessageId = msgId;
+            }
+
+            const messageWrapper = document.createElement('div');
+            let classes = `ch-message-item ${type}`;
+            if (type === 'received' && role === 'admin') {
+                classes += ' admin-received';
+            }
+            messageWrapper.className = classes;
+            
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+            
+            let statusIcon = '';
+            let adminBadge = '';
+            
+            if (type === 'sent') {
+                statusIcon = '<span class="ch-status-indicator"><i class="fas fa-check"></i></span>';
+            }
+            
+            if (type === 'received' && role === 'admin') {
+                adminBadge = `
+                    <div class="ch-admin-badge">
+                        <div class="ch-admin-icon"><i class="fas fa-crown" style="font-size: 0.7rem;"></i></div>
+                        <span class="ch-admin-name">إدارة ريكس</span>
+                        <span class="ch-admin-role">رسمي</span>
+                    </div>
+                `;
+            }
+            
+            messageWrapper.innerHTML = `
+                <div class="ch-bubble-content">
+                    ${adminBadge}
+                    ${chEscapeHtml(content)}
+                </div>
+                <div class="ch-time-stamp">
+                    <span>${timeString}</span>
+                    ${statusIcon}
+                </div>
+            `;
+            
+            messagesPanel.appendChild(messageWrapper);
+            
+            const emptyState = document.getElementById('chEmptyState');
+            if (emptyState) emptyState.remove();
+
+            chScrollToBottom();
+        }
+
+        // ===== 3. إرسال الرسالة (مصحح) =====
+        function chSendMessage() {
+            const content = messageInput.value.trim();
+            if (content === '') return;
+
+            sendBtn.disabled = true;
+            sendBtn.style.opacity = '0.5';
+
+            const formData = new FormData();
+            formData.append('room_id', chatId);
+            formData.append('content', content);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+            fetch("{% url 'services:send_message_alt' %}", {
+                method: 'POST',
+                body: formData,
+                credentials: 'same-origin'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    chAddMessageToChat(content, 'sent', data.message_id);
+                    messageInput.value = '';
+                } else {
+                    alert('حدث خطأ: ' + (data.message || 'خطأ غير معروف'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('فشل الاتصال بالسيرفر');
+            })
+            .finally(() => {
+                sendBtn.disabled = false;
+                sendBtn.style.opacity = '1';
+            });
+        }
+
+        // ===== 4. جلب الرسائل الجديدة =====
+        function chFetchNewMessages() {
+            // استخدام اسم الـ URL الصحيح
+            fetch(`/get-messages/${chatId}/?last_id=${lastMessageId}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.messages && data.messages.length > 0) {
+                    data.messages.forEach(msg => {
+                        if (msg.sender_id != currentUserId) {
+                            chAddMessageToChat(msg.content, 'received', msg.id, msg.role);
+                        } else {
+                           if (msg.id > lastMessageId) lastMessageId = msg.id;
+                        }
+                    });
+                }
+            });
+        }
+
+        // ===== 5. ربط الأحداث =====
+        messageInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                chSendMessage();
+            }
+        });
+
+        sendBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            chSendMessage();
+        });
+
+        // الإيموجي
+        emojiBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            emojiPicker.classList.toggle('show');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!emojiBtn.contains(e.target) && !emojiPicker.contains(e.target)) {
+                emojiPicker.classList.remove('show');
+            }
+        });
+
+        document.addEventListener('emoji-click', (event) => {
+            const emoji = event.detail.unicode;
+            messageInput.value += emoji;
+            messageInput.focus();
+            emojiPicker.classList.remove('show');
+        });
+
+        // دالة مساعدة
+        function chEscapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+        
+        window.chInsertSuggestion = function(text) {
+            messageInput.value = text;
+            messageInput.focus();
+        };
+
+        // تحديث تلقائي
+        setInterval(chFetchNewMessages, 3000);
+
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+
+{% block title %}لوحة التحكم - {{ role }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* استخدام بادئة dsh- لجميع الكلاسات */
+    :root {
+        --dsh-primary: #FFBD59;
+        --dsh-background: #1a1a1a;
+        --dsh-card-bg: #2a2a2a;
+        --dsh-border: #3a3a3a;
+        --dsh-text-muted: #999999;
+    }
+
+    .dsh-container { 
+        max-width: 1000px; 
+        margin: 0 auto; 
+        padding: 2rem; 
+    }
+
+    .dsh-nav-back { 
+        display: inline-block; 
+        margin-bottom: 1rem; 
+        color: var(--text-muted); 
+        text-decoration: none; 
+        transition: all 0.3s;
+    }
+
+    .dsh-nav-back:hover {
+        color: var(--primary);
+        transform: translateX(-5px);
+    }
+    
+    .dsh-header { 
+        text-align: center; 
+        margin-bottom: 2rem; 
+    }
+
+    .dsh-header h1 { 
+        color: var(--primary); 
+        margin-bottom: 0.5rem; 
+    }
+    
+    .dsh-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 2rem; 
+    }
+
+    @media (max-width: 768px) { 
+        .dsh-grid { 
+            grid-template-columns: 1fr; 
+        } 
+    }
+    
+    .dsh-card { 
+        background: var(--card-bg); 
+        padding: 1.5rem; 
+        border-radius: 8px; 
+        border: 1px solid var(--border); 
+        margin-bottom: 1.5rem; 
+        transition: all 0.3s;
+    }
+
+    .dsh-card:hover {
+        border-color: rgba(255, 189, 89, 0.3);
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.1);
+    }
+
+    .dsh-card h3 { 
+        color: var(--primary); 
+        margin-bottom: 1rem; 
+        border-bottom: 1px solid var(--border); 
+        padding-bottom: 0.5rem; 
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .dsh-form-grid { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 1rem; 
+    }
+
+    .dsh-form-group { 
+        margin-bottom: 1rem; 
+    }
+
+    .dsh-form-group label { 
+        display: block; 
+        margin-bottom: 0.5rem; 
+        color: var(--text-muted); 
+        font-size: 0.9rem; 
+    }
+
+    .dsh-form-group input, 
+    .dsh-form-group select, 
+    .dsh-form-group textarea { 
+        width: 100%; 
+        padding: 0.75rem; 
+        background: var(--background); 
+        border: 1px solid var(--border); 
+        color: var(--foreground); 
+        border-radius: 5px; 
+        font-family: 'Cairo'; 
+        box-sizing: border-box;
+        transition: all 0.3s;
+    }
+
+    .dsh-form-group input:focus, 
+    .dsh-form-group select:focus, 
+    .dsh-form-group textarea:focus {
+        border-color: var(--primary);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(255, 189, 89, 0.2);
+    }
+    
+    .dsh-full-width { 
+        grid-column: 1 / -1; 
+    }
+
+    .dsh-btn { 
+        background: var(--primary); 
+        color: #000; 
+        padding: 0.75rem 1.5rem; 
+        border: none; 
+        border-radius: 5px; 
+        cursor: pointer; 
+        font-weight: bold; 
+        font-size: 1rem; 
+        width: 100%; 
+        transition: all 0.3s;
+    }
+
+    .dsh-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.3);
+    }
+
+    .dsh-btn-secondary {
+        background: #333; 
+        color: var(--primary);
+    }
+    
+    .dsh-portfolio-grid { 
+        display: grid; 
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); 
+        gap: 1rem; 
+        margin-top: 1rem; 
+    }
+
+    .dsh-portfolio-item { 
+        position: relative; 
+        border: 1px solid var(--border); 
+        border-radius: 5px; 
+        overflow: hidden; 
+        aspect-ratio: 1; 
+        background: #000; 
+        transition: all 0.3s;
+    }
+
+    .dsh-portfolio-item:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+        box-shadow: 0 5px 15px rgba(255, 189, 89, 0.3);
+    }
+
+    .dsh-portfolio-item img, 
+    .dsh-portfolio-item video { 
+        width: 100%; 
+        height: 100%; 
+        object-fit: cover; 
+        transition: transform 0.3s;
+    }
+
+    .dsh-portfolio-item:hover img,
+    .dsh-portfolio-item:hover video {
+        transform: scale(1.1);
+    }
+
+    .dsh-portfolio-item .dsh-delete-btn { 
+        position: absolute; 
+        top: 5px; 
+        left: 5px; 
+        background: rgba(231, 76, 60, 0.9); 
+        color: white; 
+        border: none; 
+        border-radius: 50%; 
+        width: 25px; 
+        height: 25px; 
+        cursor: pointer; 
+        font-size: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: all 0.3s;
+    }
+
+    .dsh-portfolio-item:hover .dsh-delete-btn {
+        opacity: 1;
+    }
+
+    .dsh-portfolio-item .dsh-delete-btn:hover {
+        transform: scale(1.1) rotate(90deg);
+        background: rgba(231, 76, 60, 1);
+    }
+
+    .dsh-portfolio-item i.fa-play-circle,
+    .dsh-portfolio-item i.fa-headphones {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: var(--primary);
+        opacity: 0.8;
+        transition: all 0.3s;
+    }
+
+    .dsh-portfolio-item:hover i.fa-play-circle,
+    .dsh-portfolio-item:hover i.fa-headphones {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+
+    .dsh-empty-message {
+        color: var(--text-muted); 
+        grid-column: 1/-1; 
+        text-align: center;
+        padding: 2rem;
+        background: rgba(0,0,0,0.2);
+        border-radius: 8px;
+        border: 1px dashed var(--border);
+    }
+
+    .dsh-form-divider {
+        margin: 1.5rem 0;
+        border: none;
+        border-top: 1px dashed var(--border);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dsh-container">
+    <a href="/" class="dsh-nav-back">
+        <i class="fas fa-arrow-right"></i>
+        العودة للموقع
+    </a>
+    
+    <div class="dsh-header">
+        <h1>لوحة تحكم: {{ role }}</h1>
+        <p>أكمل بياناتك وأضف أعمالك لجذب المزيد من العملاء</p>
+    </div>
+
+    <div class="dsh-grid">
+        <!-- القسم الأيمن: البيانات -->
+        <div>
+            <div class="dsh-card">
+                <h3><i class="fas fa-id-card"></i> البيانات والخبرات</h3>
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="profile">
+                    
+                    <div class="dsh-form-grid">
+                        <div class="dsh-form-group dsh-full-width">
+                            <label>الاسم / اسم الجهة</label>
+                            <input type="text" name="name" value="{{ instance.name|default:'' }}" required>
+                        </div>
+
+                        <div class="dsh-form-group">
+                            <label>رقم الجوال</label>
+                            <input type="text" name="phone" value="{{ instance.phone|default:'' }}">
+                        </div>
+                        <div class="dsh-form-group">
+                            <label>البريد الإلكتروني</label>
+                            <input type="email" name="email" value="{{ instance.email|default:'' }}">
+                        </div>
+
+                        <!-- حقول خاصة حسب نوع الخدمة -->
+                        
+                        {% if role == 'صانع محتوى' %}
+                            <div class="dsh-form-group">
+                                <label>التخصص</label>
+                                <select name="specialty">
+                                    <option value="video" {% if instance.specialty == 'video' %}selected{% endif %}>محتوى فيديو</option>
+                                    <option value="photo" {% if instance.specialty == 'photo' %}selected{% endif %}>تصوير فوتوغرافي</option>
+                                    <option value="graphics" {% if instance.specialty == 'graphics' %}selected{% endif %}>تصميم جرافيكس</option>
+                                </select>
+                            </div>
+                            <div class="dsh-form-group">
+                                <label>عدد المتابعين</label>
+                                <input type="text" name="followers" value="{{ instance.followers|default:'' }}" placeholder="مثال: 1M">
+                            </div>
+                            <div class="dsh-form-group dsh-full-width">
+                                <label>المنصات (سناب شات، تيك توك...)</label>
+                                <input type="text" name="platform" value="{{ instance.platform|default:'' }}">
+                            </div>
+                        {% endif %}
+
+                        {% if role == 'منتج فيديو' %}
+                            <div class="dsh-form-group">
+                                <label>نوع الفيديو</label>
+                                <select name="video_type">
+                                    <option value="commercial" {% if instance.video_type == 'commercial' %}selected{% endif %}>إعلاني</option>
+                                    <option value="documentary" {% if instance.video_type == 'documentary' %}selected{% endif %}>وثائقي</option>
+                                    <option value="corporate" {% if instance.video_type == 'corporate' %}selected{% endif %}>شركات</option>
+                                </select>
+                            </div>
+                            <div class="dsh-form-group">
+                                <label>الجودة</label>
+                                <input type="text" name="quality" value="{{ instance.quality|default:'' }}" placeholder="مثال: 4K">
+                            </div>
+                            <div class="dsh-form-group dsh-full-width">
+                                <label>المدة المتاحة / الوصف</label>
+                                <textarea name="description" rows="2">{{ instance.description|default:'' }}</textarea>
+                            </div>
+                        {% endif %}
+
+                        {% if role == 'فنان صوتي' %}
+                            <div class="dsh-form-group">
+                                <label>نوع الصوت</label>
+                                <select name="voice_type">
+                                    <option value="male" {% if instance.voice_type == 'male' %}selected{% endif %}>ذكر</option>
+                                    <option value="female" {% if instance.voice_type == 'female' %}selected{% endif %}>أنثى</option>
+                                    <option value="child" {% if instance.voice_type == 'child' %}selected{% endif %}>طفل</option>
+                                </select>
+                            </div>
+                            <div class="dsh-form-group">
+                                <label>اللغات</label>
+                                <input type="text" name="languages" value="{{ instance.languages|default:'' }}" placeholder="عربي، انجليزي">
+                            </div>
+                            <div class="dsh-form-group dsh-full-width">
+                                <label>التخصص الدقيق</label>
+                                <input type="text" name="specialty" value="{{ instance.specialty|default:'' }}" placeholder="تعليق وثائقي، إعلاني...">
+                            </div>
+                        {% endif %}
+
+                        {% if role == 'كاتب محتوى' %}
+                            <div class="dsh-form-group">
+                                <label>نوع الكتابة</label>
+                                <select name="writing_type">
+                                    <option value="blog" {% if instance.writing_type == 'blog' %}selected{% endif %}>مدونة</option>
+                                    <option value="social" {% if instance.writing_type == 'social' %}selected{% endif %}>وسائل اجتماعية</option>
+                                    <option value="seo" {% if instance.writing_type == 'seo' %}selected{% endif %}>SEO</option>
+                                </select>
+                            </div>
+                            <div class="dsh-form-group">
+                                <label>عدد المقالات المنجزة</label>
+                                <input type="number" name="articles_count" value="{{ instance.articles_count|default:'' }}">
+                            </div>
+                            <div class="dsh-form-group dsh-full-width">
+                                <label>المجالات المفضلة</label>
+                                <input type="text" name="specialty" value="{{ instance.specialty|default:'' }}" placeholder="تقني، طبي، رياضي...">
+                            </div>
+                        {% endif %}
+
+                        <!-- حقول مشتركة -->
+                        <div class="dsh-form-group dsh-full-width">
+                            <label>الخبرات السابقة</label>
+                            <textarea name="experience" rows="3">{{ instance.experience|default:'' }}</textarea>
+                        </div>
+                        <div class="dsh-form-group dsh-full-width">
+                            <label>رابط الصورة الشخصية (Profile Image)</label>
+                            <input type="text" name="image_url" value="{{ instance.image_url|default:'' }}">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="dsh-btn">حفظ التغييرات</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- القسم الأيسر: المعرض -->
+        <div>
+            <div class="dsh-card">
+                <h3><i class="fas fa-photo-video"></i> معرض الأعمال (Portfolio)</h3>
+                <form method="post" style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px dashed var(--border);">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_type" value="portfolio">
+                    <div class="dsh-form-group">
+                        <label>عنوان العمل</label>
+                        <input type="text" name="title" placeholder="مثال: تصوير حفلة تخرج" required>
+                    </div>
+                    <div class="dsh-form-group">
+                        <label>النوع</label>
+                        <select name="item_type">
+                            <option value="image">صورة</option>
+                            <option value="video">فيديو</option>
+                            <option value="audio">صوت (mp3)</option>
+                        </select>
+                    </div>
+                    <div class="dsh-form-group">
+                        <label>الرابط</label>
+                        <input type="text" name="media_url" placeholder="رابط الصورة أو المقطع" required>
+                    </div>
+                    <button type="submit" class="dsh-btn dsh-btn-secondary">إضافة للمعرض</button>
+                </form>
+
+                <div class="dsh-portfolio-grid">
+                    {% for item in portfolio %}
+                    <div class="dsh-portfolio-item">
+                        {% if item.item_type == 'image' %}
+                            <img src="{{ item.media_url }}" alt="{{ item.title }}">
+                        {% elif item.item_type == 'video' %}
+                            <div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--primary);">
+                                <i class="fas fa-play-circle fa-3x"></i>
+                            </div>
+                        {% elif item.item_type == 'audio' %}
+                             <div style="display:flex; align-items:center; justify-content:center; height:100%; color:var(--primary);">
+                                <i class="fas fa-headphones fa-3x"></i>
+                            </div>
+                        {% endif %}
+                        <form action="{% url 'services:delete_portfolio_item' item.id %}" method="post" onsubmit="return confirm('حذف؟');">
+                            {% csrf_token %}
+                            <button type="submit" class="dsh-delete-btn"><i class="fas fa-times"></i></button>
+                        </form>
+                    </div>
+                    {% empty %}
+                    <div class="dsh-empty-message">
+                        <p>لم تقم بإضافة أعمال بعد.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        const dshData = [
+            {% for item in page_obj.object_list %}
+            {
+                id: {{ item.id }},
+                userId: {% if item.user_id %}{{ item.user_id }}{% else %}null{% endif %},
+                name: "{{ item.name }}",
+                type: "{{ item.specialty }}",
+                image: "{{ item.image_url }}",
+                isActive: {{ item.is_active|yesno:"true,false" }}
+            },
+            {% endfor %}
+        ];
+
+        function dshRenderData(filter = 'all') {
+            // ... (كود الفلترة) ...
+            
+            grid.innerHTML = filtered.map(item => `
+                 // ... (كود البطاقة) ...
+                 <button class="dsh-model-btn" onclick="dshHandleAction(${item.id}, ${item.userId})">
+                    ${item.userId ? 'عرض الخدمات' : 'اطلب الآن'}
+                </button>
+            `).join('');
+        }
+
+        window.dshHandleAction = function(id, userId) {
+            if (userId) {
+                window.location.href = '/provider/' + userId + '/';
+            } else {
+                window.location.href = '/request-service/?service=content-creators&id=' + id;
+            }
+        };
+
+        // تأثيرات إضافية
+        document.querySelectorAll('.dsh-form-group input, .dsh-form-group select, .dsh-form-group textarea').forEach(input => {
+            input.addEventListener('focus', function() {
+                this.parentElement.style.transform = 'translateX(5px)';
+            });
+            input.addEventListener('blur', function() {
+                this.parentElement.style.transform = 'translateX(0)';
+            });
+        });
+    })();
+</script>
+{% endblock %}

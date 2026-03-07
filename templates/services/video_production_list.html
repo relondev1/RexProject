@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+    <title>إنتاج الفيديو - ريكس</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #FFBD59;
+            --primary-dark: #E6A84A;
+            --background: #1a1a1a;
+            --foreground: #ffffff;
+            --card-bg: #2a2a2a;
+            --border: #3a3a3a;
+            --text-muted: #999999;
+            --text-light: #cccccc;
+            --success: #4CAF50;
+            --error: #E74C3C;
+        }
+
+        html {
+            direction: rtl;
+            text-align: right;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--background);
+            color: var(--foreground);
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .container {
+                padding: 0 2rem;
+            }
+        }
+
+        /* ==================== NAVBAR ==================== */
+        nav {
+            background-color: #1a1a1a;
+            border-bottom: 1px solid var(--border);
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1rem 0;
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: bold;
+            font-size: 1.5rem;
+            border: 2px solid var(--primary);
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+        }
+
+        .nav-menu {
+            display: none;
+            gap: 2rem;
+            list-style: none;
+        }
+
+        .nav-menu.active {
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: var(--background);
+            border-top: 1px solid var(--border);
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        @media (min-width: 768px) {
+            .nav-menu {
+                display: flex;
+                flex-direction: row;
+                position: static;
+                background-color: transparent;
+                border-top: none;
+                padding: 0;
+            }
+        }
+
+        .nav-menu a {
+            color: var(--foreground);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-menu a:hover {
+            color: var(--primary);
+        }
+
+        .nav-toggle {
+            display: block;
+            background: none;
+            border: none;
+            color: var(--foreground);
+            cursor: pointer;
+            font-size: 1.5rem;
+        }
+
+        @media (min-width: 768px) {
+            .nav-toggle {
+                display: none;
+            }
+        }
+
+        /* ==================== PAGE HEADER ==================== */
+        .page-header {
+            margin-top: 5rem;
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .back-link {
+            display: inline-block;
+            color: var(--primary);
+            text-decoration: none;
+            margin-bottom: 1rem;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .back-link:hover {
+            color: var(--primary-dark);
+        }
+
+        .page-header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            color: var(--primary);
+        }
+
+        .page-header p {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        /* ==================== FILTERS ==================== */
+        .filters {
+            background-color: var(--card-bg);
+            padding: 1.5rem;
+            border-radius: 0.375rem;
+            margin: 2rem 0;
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-label {
+            color: var(--foreground);
+            font-weight: 500;
+            margin-right: 1rem;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1.5rem;
+            border: 2px solid var(--border);
+            background-color: transparent;
+            color: var(--foreground);
+            border-radius: 0.25rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Cairo', sans-serif;
+            font-weight: 500;
+        }
+
+        .filter-btn:hover,
+        .filter-btn.active {
+            background-color: var(--primary);
+            color: #1a1a1a;
+            border-color: var(--primary);
+        }
+
+        /* ==================== PRODUCTIONS GRID ==================== */
+        .productions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .production-card {
+            background-color: var(--card-bg);
+            border-radius: 0.625rem;
+            overflow: hidden;
+            transition: all 0.3s;
+            border: 1px solid var(--border);
+        }
+
+        .production-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(255, 189, 89, 0.1);
+            border-color: var(--primary);
+        }
+
+        .production-image {
+            width: 100%;
+            height: 250px;
+            background: linear-gradient(135deg, #2a2a2a 0%, #3a3a3a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            font-size: 3rem;
+            position: relative;
+        }
+
+        .production-image::after {
+            content: '▶';
+            position: absolute;
+            font-size: 2rem;
+            color: var(--primary);
+            opacity: 0.7;
+        }
+
+        .production-info {
+            padding: 1.5rem;
+        }
+
+        .production-name {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+
+        .production-details {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .production-details p {
+            margin: 0.5rem 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .production-details strong {
+            color: var(--text-light);
+        }
+
+        .production-type {
+            display: inline-block;
+            background-color: rgba(255, 189, 89, 0.1);
+            color: var(--primary);
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            margin: 0.5rem 0;
+            font-weight: 500;
+        }
+
+        .production-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background-color: var(--primary);
+            color: #1a1a1a;
+            border: none;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-family: 'Cairo', sans-serif;
+            font-size: 1rem;
+        }
+
+        .production-btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        /* ==================== NO RESULTS ==================== */
+        .no-results {
+            text-align: center;
+            padding: 3rem 0;
+            color: var(--text-muted);
+        }
+
+        .no-results p {
+            font-size: 1.125rem;
+        }
+
+        /* ==================== FOOTER ==================== */
+        footer {
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border);
+            padding: 3rem 0 1rem;
+            margin-top: 4rem;
+        }
+
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        footer h3 {
+            font-size: 1.125rem;
+            margin-bottom: 1rem;
+            color: var(--foreground);
+        }
+
+        footer ul {
+            list-style: none;
+        }
+
+        footer ul li {
+            margin-bottom: 0.5rem;
+        }
+
+        footer a {
+            color: var(--text-muted);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+
+        footer a:hover {
+            color: var(--primary);
+        }
+
+        .footer-bottom {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        footer .logo {
+            margin-bottom: 1rem;
+        }
+
+        footer p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- ==================== NAVBAR ==================== -->
+    <nav>
+        <div class="container">
+            <a href="/" class="logo">REX</a>
+            
+            <ul class="nav-menu" id="navMenu">
+                <li><a href="/">الرئيسية</a></li>
+                <li><a href="/#services">الخدمات</a></li>
+                <li><a href="/#about">أعمالنا</a></li>
+                <li><a href="/contact">تواصل معنا</a></li>
+            </ul>
+            
+            <button class="nav-toggle" id="navToggle">☰</button>
+        </div>
+    </nav>
+
+    <!-- ==================== PAGE HEADER ==================== -->
+    <div class="container">
+        <div class="page-header">
+            <a href="/" class="back-link">← العودة للرئيسية</a>
+            <h1>إنتاج الفيديو</h1>
+            <p>خدمات إنتاج فيديو احترافية من التخطيط والتصوير حتى المونتاج والإخراج النهائي</p>
+        </div>
+
+        <!-- ==================== FILTERS ==================== -->
+        <div class="filters">
+            <span class="filter-label">نوع الفيديو:</span>
+            <button class="filter-btn active" data-filter="all">الكل</button>
+            <button class="filter-btn" data-filter="commercial">إعلاني</button>
+            <button class="filter-btn" data-filter="documentary">وثائقي</button>
+            <button class="filter-btn" data-filter="corporate">شركات</button>
+        </div>
+
+        <!-- ==================== PRODUCTIONS GRID ==================== -->
+        <div class="productions-grid" id="productionsGrid">
+            <!-- Productions will be displayed here -->
+        </div>
+
+        <!-- ==================== NO RESULTS ==================== -->
+        <div class="no-results" id="noResults" style="display: none;">
+            <p>لا توجد نتائج مطابقة للفلاتر المحددة</p>
+        </div>
+    </div>
+
+    <!-- ==================== FOOTER ==================== -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div>
+                    <a href="/" class="logo">REX</a>
+                    <p>نقدم لك أفضل الخدمات الرقمية الاحترافية لتحقيق أهدافك التسويقية والإبداعية</p>
+                </div>
+
+                <div>
+                    <h3>روابط سريعة</h3>
+                    <ul>
+                        <li><a href="/">الرئيسية</a></li>
+                        <li><a href="/#services">خدماتنا</a></li>
+                        <li><a href="/#about">من نحن</a></li>
+                        <li><a href="/contact">تواصل معنا</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3>خدماتنا</h3>
+                    <ul>
+                        <li><a href="/models">توفير المودل</a></li>
+                        <li><a href="/content-creators">صناع المحتوى</a></li>
+                        <li><a href="/video-production">إنتاج الفيديو</a></li>
+                        <li><a href="/voice-artists">التعليق الصوتي</a></li>
+                        <li><a href="/content-writing">كتابة المحتوى</a></li>
+                    </ul>
+                </div>
+
+                <div>
+                    <h3>تواصل معنا</h3>
+                    <p>📧 info@rex.com</p>
+                    <p>📱 +966 50 123 4567</p>
+                    <p>📍 الرياض، المملكة العربية السعودية</p>
+                </div>
+            </div>
+
+            <div class="footer-bottom">
+                <p>© 2024 ريكس - الخدمات الإبداعية. جميع الحقوق محفوظة.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- ==================== JAVASCRIPT ==================== -->
+    <script>
+        // Sample data - Replace with your actual data from Django
+        const productionsData = [
+            {
+                id: 1,
+                name: 'فيديو إعلاني - منتج جديد',
+                type: 'commercial',
+                duration: '30 ثانية',
+                quality: '4K',
+                date: '2024-01-15'
+            },
+            {
+                id: 2,
+                name: 'فيديو وثائقي - رحلة استكشافية',
+                type: 'documentary',
+                duration: '15 دقيقة',
+                quality: '1080p',
+                date: '2024-01-10'
+            },
+            {
+                id: 3,
+                name: 'فيديو شركة - تعريفي',
+                type: 'corporate',
+                duration: '2 دقيقة',
+                quality: '4K',
+                date: '2024-01-05'
+            },
+            {
+                id: 4,
+                name: 'فيديو إعلاني - حملة تسويقية',
+                type: 'commercial',
+                duration: '60 ثانية',
+                quality: '4K',
+                date: '2023-12-28'
+            }
+        ];
+
+        let currentFilter = 'all';
+
+        // Render productions
+        function renderProductions(filter = 'all') {
+            const grid = document.getElementById('productionsGrid');
+            const noResults = document.getElementById('noResults');
+            
+            let filtered = productionsData;
+            if (filter !== 'all') {
+                filtered = productionsData.filter(prod => prod.type === filter);
+            }
+
+            if (filtered.length === 0) {
+                grid.innerHTML = '';
+                noResults.style.display = 'block';
+                return;
+            }
+
+            noResults.style.display = 'none';
+            grid.innerHTML = filtered.map(prod => `
+                <div class="production-card">
+                    <div class="production-image"></div>
+                    <div class="production-info">
+                        <div class="production-name">${prod.name}</div>
+                        <div class="production-type">${getTypeLabel(prod.type)}</div>
+                        <div class="production-details">
+                            <p>
+                                <strong>المدة:</strong>
+                                <span>${prod.duration}</span>
+                            </p>
+                            <p>
+                                <strong>الجودة:</strong>
+                                <span>${prod.quality}</span>
+                            </p>
+                            <p>
+                                <strong>التاريخ:</strong>
+                                <span>${formatDate(prod.date)}</span>
+                            </p>
+                        </div>
+                        <button class="production-btn" onclick="requestProduction(${prod.id})">اطلب الآن</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Get type label
+        function getTypeLabel(type) {
+            const labels = {
+                'commercial': 'إعلاني',
+                'documentary': 'وثائقي',
+                'corporate': 'شركات'
+            };
+            return labels[type] || type;
+        }
+
+        // Format date
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('ar-SA');
+        }
+
+        // Filter buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                currentFilter = this.dataset.filter;
+                renderProductions(currentFilter);
+            });
+        });
+
+        // Request production
+        function requestProduction(productionId) {
+            window.location.href = '/contact?production=' + productionId;
+        }
+
+        // Mobile Menu Toggle
+        const navToggle = document.getElementById('navToggle');
+        const navMenu = document.getElementById('navMenu');
+
+        if (navToggle) {
+            navToggle.addEventListener('click', function() {
+                navMenu.classList.toggle('active');
+            });
+
+            navMenu.querySelectorAll('a').forEach(link => {
+                link.addEventListener('click', function() {
+                    navMenu.classList.remove('active');
+                });
+            });
+        }
+
+        // Initial render
+        renderProductions();
+    </script>
+</body>
+</html>

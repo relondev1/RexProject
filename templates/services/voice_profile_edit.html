@@ -1,0 +1,471 @@
+{% extends 'base.html' %}
+
+{% block title %}تعديل الملف الشخصي - الفنان الصوتي{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* === أنميشنات === */
+    @keyframes vFadeInUp {
+        from { opacity: 0; transform: translateY(40px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes vFloat {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-10px); }
+    }
+
+    @keyframes vPulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+
+    .v-container { 
+        max-width: 1100px; 
+        margin: 0 auto; 
+        padding: 2rem; 
+        padding-top: 6rem; 
+    }
+
+    /* === Tabs محسنة (مطابقة للداش بورد) === */
+    .v-tabs { 
+        display: flex; 
+        gap: 1rem; 
+        margin-bottom: 3rem; 
+        justify-content: center; 
+        flex-wrap: wrap; 
+        animation: vFadeInUp 0.8s ease 0.1s both;
+    }
+
+    .v-tab-btn {
+        padding: 1rem 2.5rem; 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        border: 2px solid var(--border);
+        color: var(--text-muted); 
+        border-radius: 50px; 
+        text-decoration: none; 
+        font-weight: 700; 
+        font-size: 1.1rem;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .v-tab-btn::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.1);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .v-tab-btn:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .v-tab-btn i {
+        font-size: 1.2rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .v-tab-btn span {
+        position: relative;
+        z-index: 2;
+    }
+
+    .v-tab-btn.active { 
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000; 
+        border-color: transparent; 
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.4);
+    }
+
+    .v-tab-btn:hover:not(.active) {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateY(-2px);
+    }
+
+    /* === كارد الفورم المحسن === */
+    .v-form-card { 
+        max-width: 800px; 
+        margin: 0 auto; 
+        background: linear-gradient(145deg, var(--card-bg), #222);
+        padding: 2.5rem; 
+        border-radius: 30px; 
+        border: 1px solid rgba(255,189,89,0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        position: relative;
+        overflow: hidden;
+        animation: vFadeInUp 0.8s ease;
+    }
+
+    .v-form-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        animation: vPulse 2s infinite;
+    }
+
+    .v-form-section { 
+        margin-bottom: 2rem; 
+        padding-bottom: 1.5rem; 
+        border-bottom: 1px solid rgba(255,189,89,0.1);
+    }
+
+    .v-form-section h3 { 
+        color: var(--primary); 
+        margin-bottom: 1.5rem; 
+        font-size: 1.3rem;
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+    }
+
+    .v-form-section h3 i {
+        font-size: 1.3rem;
+        animation: vFloat 3s ease-in-out infinite;
+    }
+
+    .v-form-row { 
+        display: grid; 
+        grid-template-columns: 1fr 1fr; 
+        gap: 1.5rem; 
+        margin-bottom: 1rem;
+    }
+
+    @media (max-width: 600px) { 
+        .v-form-row { 
+            grid-template-columns: 1fr; 
+        } 
+    }
+
+    .v-form-group { 
+        margin-bottom: 1.2rem; 
+    }
+
+    .v-form-group label { 
+        display: block; 
+        margin-bottom: 0.5rem; 
+        color: var(--text-muted); 
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .v-form-group label i {
+        color: var(--primary);
+        font-size: 0.9rem;
+    }
+
+    .v-form-group input, 
+    .v-form-group select, 
+    .v-form-group textarea {
+        width: 100%; 
+        padding: 0.9rem 1.2rem; 
+        background: rgba(0,0,0,0.3);
+        border: 2px solid var(--border); 
+        color: var(--text); 
+        border-radius: 15px; 
+        font-family: 'Cairo';
+        transition: all 0.3s;
+    }
+
+    .v-form-group input:focus, 
+    .v-form-group select:focus, 
+    .v-form-group textarea:focus {
+        border-color: var(--primary); 
+        outline: none;
+        box-shadow: 0 0 15px rgba(255,189,89,0.2);
+        background: rgba(0,0,0,0.5);
+    }
+
+    .v-file-upload-box {
+        border: 2px dashed rgba(255,189,89,0.3); 
+        padding: 2rem; 
+        text-align: center; 
+        border-radius: 20px; 
+        cursor: pointer; 
+        transition: all 0.4s; 
+        margin-top: 0.5rem;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .v-file-upload-box:hover { 
+        border-color: var(--primary); 
+        background: rgba(255,189,89,0.05);
+        transform: translateY(-5px);
+    }
+
+    .v-file-upload-box i { 
+        font-size: 2.5rem; 
+        color: var(--primary); 
+        margin-bottom: 0.5rem; 
+        display: block;
+        animation: vFloat 3s ease-in-out infinite;
+    }
+
+    .v-file-upload-box input { 
+        display: none; 
+    }
+
+    .v-current-preview { 
+        margin-top: 1rem; 
+        padding: 1rem; 
+        background: #000; 
+        border-radius: 15px;
+        border: 1px solid rgba(255,189,89,0.2);
+    }
+
+    .v-btn-save { 
+        background: linear-gradient(135deg, var(--primary), var(--primary-dark)); 
+        color: #000; 
+        padding: 1.2rem 2rem; 
+        border: none; 
+        border-radius: 50px; 
+        cursor: pointer; 
+        font-weight: 800; 
+        width: 100%; 
+        font-size: 1.2rem;
+        transition: all 0.4s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.8rem;
+        position: relative;
+        overflow: hidden;
+        margin-top: 2rem;
+        box-shadow: 0 5px 15px rgba(255,189,89,0.3);
+    }
+
+    .v-btn-save::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+    }
+
+    .v-btn-save:hover::before {
+        width: 300px;
+        height: 300px;
+    }
+
+    .v-btn-save:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 25px rgba(255,189,89,0.4);
+    }
+
+    /* === زر العودة === */
+    .v-back-home {
+        text-align: center;
+        margin-top: 2rem;
+    }
+
+    .v-back-home a {
+        color: var(--text-muted);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.8rem 2rem;
+        border: 1px solid var(--border);
+        border-radius: 40px;
+        transition: all 0.3s;
+    }
+
+    .v-back-home a:hover {
+        border-color: var(--primary);
+        color: var(--primary);
+        transform: translateX(-5px);
+    }
+
+    /* === Responsive === */
+    @media (max-width: 768px) {
+        .v-container { 
+            padding: 1rem; 
+            padding-top: 5rem; 
+        }
+
+        .v-tab-btn { 
+            padding: 0.8rem 1.5rem; 
+            font-size: 0.95rem; 
+        }
+
+        .v-form-card {
+            padding: 1.5rem;
+        }
+    }
+
+    /* === سكرول مخصص === */
+    ::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    ::-webkit-scrollbar-track {
+        background: var(--bg);
+    }
+
+    ::-webkit-scrollbar-thumb {
+        background: var(--primary);
+        border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: var(--primary-dark);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="v-container">
+<!-- Tabs محسنة -->
+<div class="v-tabs"> <!-- تغيير من mdl-tabs إلى v-tabs -->
+    <a href="{% url 'services:voice_dashboard' %}" class="v-tab-btn ">الرئيسية</a> <!-- تغيير من mdl-tab-btn إلى v-tab-btn -->
+    <a href="{% url 'services:voice_profile_edit' %}" class="v-tab-btn active">المعلومات الشخصية</a>
+    <a href="{% url 'services:voice_portfolio' %}" class="v-tab-btn">معرض الأعمال</a>
+    
+    {% if is_admin_view %}
+    <a href="{% url 'services:admin_close_panel' %}" class="v-tab-btn" style="background: #d35400; color: #fff; border: none;">
+        <i class="fas fa-sign-out-alt"></i> إنهاء التحكم
+    </a>
+    {% endif %}
+</div>
+
+
+    <!-- كارد تعديل الملف الشخصي المحسن -->
+    <div class="v-form-card">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <!-- البيانات الأساسية -->
+            <div class="v-form-section">
+                <h3>
+                    <i class="fas fa-user-circle"></i>
+                    البيانات الأساسية
+                </h3>
+                <div class="v-form-row">
+                    <div class="v-form-group">
+                        <label><i class="fas fa-user"></i> الاسم الكامل</label>
+                        <input type="text" name="name" value="{{ instance.name|default:'' }}" placeholder="أدخل اسمك الكامل" required>
+                    </div>
+                    <div class="v-form-group">
+                        <label><i class="fas fa-envelope"></i> البريد الإلكتروني</label>
+                        <input type="email" name="email" value="{{ instance.email|default:'' }}" placeholder="example@email.com">
+                    </div>
+                </div>
+                <div class="v-form-row">
+                    <div class="v-form-group">
+                        <label><i class="fas fa-phone"></i> رقم الجوال</label>
+                        <input type="text" name="phone" value="{{ instance.phone|default:'' }}" placeholder="05xxxxxxxx">
+                    </div>
+                    <div class="v-form-group">
+                        <label><i class="fas fa-star"></i> سنوات الخبرة</label>
+                        <input type="text" name="experience" value="{{ instance.experience|default:'' }}" placeholder="مثال: 5 سنوات">
+                    </div>
+                </div>
+            </div>
+
+            <!-- المهارات الصوتية -->
+            <div class="v-form-section">
+                <h3>
+                    <i class="fas fa-microphone-alt"></i>
+                    المهارات الصوتية
+                </h3>
+                <div class="v-form-row">
+                    <div class="v-form-group">
+                        <label><i class="fas fa-waveform"></i> نوع الصوت</label>
+                        <select name="voice_type">
+                            <option value="تعليق صوتي" {% if instance.voice_type == 'تعليق صوتي' %}selected{% endif %}>تعليق صوتي</option>
+                            <option value="إعلانات" {% if instance.voice_type == 'إعلانات' %}selected{% endif %}>إعلانات</option>
+                            <option value="كتب صوتية" {% if instance.voice_type == 'كتب صوتية' %}selected{% endif %}>كتب صوتية</option>
+                            <option value="أفلام وثائقية" {% if instance.voice_type == 'أفلام وثائقية' %}selected{% endif %}>أفلام وثائقية</option>
+                        </select>
+                    </div>
+                    <div class="v-form-group">
+                        <label><i class="fas fa-globe"></i> اللغات</label>
+                        <input type="text" name="languages" value="{{ instance.languages|default:'' }}" placeholder="مثال: العربية، الإنجليزية">
+                    </div>
+                </div>
+                <div class="v-form-group">
+                    <label><i class="fas fa-tag"></i> التخصص الدقيق</label>
+                    <input type="text" name="specialty" value="{{ instance.specialty|default:'' }}" placeholder="مثال: أصوات كرتونية، تقليد، حماسي">
+                </div>
+            </div>
+
+            <!-- الوسائط -->
+            <div class="v-form-section" style="border-bottom: none;">
+                <h3>
+                    <i class="fas fa-photo-video"></i>
+                    الوسائط
+                </h3>
+                
+                <!-- رفع الصورة -->
+                <div class="v-form-group">
+                    <label><i class="fas fa-image"></i> الصورة الشخصية</label>
+                    <label class="v-file-upload-box">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>اضغط لرفع صورة شخصية</span>
+                        <input type="file" name="image_file" accept="image/*">
+                    </label>
+                    {% if instance.image_url %}
+                    <div class="v-current-preview" style="text-align: center;">
+                        <img src="{{ instance.image_url }}" style="max-width: 150px; border-radius: 10px; border: 2px solid var(--primary);">
+                    </div>
+                    {% endif %}
+                </div>
+
+                <!-- رفع الصوت التعريفي -->
+                <div class="v-form-group">
+                    <label><i class="fas fa-headphones"></i> الصوت التعريفي</label>
+                    <label class="v-file-upload-box">
+                        <i class="fas fa-microphone-alt"></i>
+                        <span>اضغط لرفع مقطع صوتي تعريفي</span>
+                        <input type="file" name="audio_intro_file" accept="audio/*">
+                    </label>
+                    {% if instance.audio_intro_url %}
+                    <div class="v-current-preview">
+                        <audio controls style="width: 100%;">
+                            <source src="{{ instance.audio_intro_url }}" type="audio/mpeg">
+                        </audio>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <button type="submit" class="v-btn-save">
+                <i class="fas fa-save"></i> حفظ التغييرات
+            </button>
+        </form>
+
+        <!-- زر العودة للوحة التحكم -->
+        <div class="v-back-home">
+            <a href="{% url 'services:voice_dashboard' %}">
+                <i class="fas fa-arrow-right"></i>
+                العودة للوحة التحكم
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
