@@ -44,13 +44,15 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='OrderItems',
             fields=[
-                ('pk', models.CompositePrimaryKey('order_id', 'product_id', blank=True, editable=False, primary_key=True, serialize=False)),
+                ('order_id', models.IntegerField(primary_key=True)),
+                ('product_id', models.IntegerField()),
                 ('quantity', models.IntegerField()),
                 ('unit_price', models.DecimalField(decimal_places=2, max_digits=4)),
             ],
             options={
                 'db_table': 'order_items',
                 'managed': False,
+                'unique_together': [['order_id', 'product_id']],
             },
         ),
         migrations.CreateModel(
