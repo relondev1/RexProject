@@ -937,7 +937,7 @@ def send_message(request):
                     cursor.execute("""
                         INSERT INTO evreyting_chatmessage 
                         (room_id, sender_id, content, status, is_read, created_at)
-                        VALUES (%s, %s, %s, 'sent', 0, NOW())
+                        VALUES (%s, %s, %s, 'sent', false, NOW())
                     """, [room_id, request.user.id, content])
                     new_id = cursor.lastrowid
                 
